@@ -61,6 +61,8 @@ void setup() {
   pinMode(button4Pin, INPUT);
   pinMode(LIMSW_X, INPUT_PULLUP);
 
+  pinMode(A0, INPUT);
+
   Serial.begin(115200);
   //Serial.println(L);
   // добавляем шаговики на оси
@@ -125,6 +127,16 @@ read=(char)Serial.read();
   Status3 = digitalRead(button3Pin);
   Status4 = digitalRead(button4Pin);
 
+  int value = analogRead(A0);
+  int moveX_state = decodeState(value); // -1 0 1
+
+  Serial.print("Value: ");
+  Serial.print(value);
+  Serial.print(" → State: ");
+  Serial.println(moveX_state);
+
+//   if (moveX_state == 1) {Status1 == LOW;}
+//   else if (moveX_state == -1) {Status2 == LOW;}
 
   //Обработка концевика 0
   static uint32_t tmr4;
@@ -227,3 +239,10 @@ read=(char)Serial.read();
     }
  }
 }
+
+int decodeState(int analogValue) {
+  if (analogValue < 100) return -1;      // ~0V
+  else if (analogValue < 600) return 0;  // ~2.5V
+  else return 1;                         // ~5V
+}
+
