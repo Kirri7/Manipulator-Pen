@@ -134,8 +134,9 @@ void loop() {
     Serial.print(" → State: ");
     Serial.println(moveX_state);
     
-    //   if (moveX_state == 1) {Status1 == LOW;}
-    //   else if (moveX_state == -1) {Status2 == LOW;}
+    // TODO try this
+    if (moveX_state == 1) {Status1 = LOW;}
+    else if (moveX_state == -1) {Status2 = LOW;}
     
     //Обработка концевика 0
     static uint32_t tmr4;
