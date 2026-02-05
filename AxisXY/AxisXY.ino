@@ -31,16 +31,14 @@ GPlanner<STEPPER2WIRE, 2> planner2;
 
 // === СОСТОЯНИЯ КНОПОК И КОНЦЕВИКОВ === //
 bool pState_0 = false;
-bool pStateSwitch_0 = false;
 bool pState_1 = false;
 bool state_switch_0 = 0;
 bool state_switch_1 = 0;
-bool hold_0 = 0;
-bool hold_1 = 0;
+bool hold_0 = 0; // ?
+bool hold_1 = 0; // ?
 
 // === СОСТОЯНИЯ СИСТЕМЫ === //
-bool Z1State = 0;
-bool State = false;
+// bool State = false;
 int count = (pointAm) / 2 + 2;
 int count2 = (pointAm) / 2 + 2;
 
