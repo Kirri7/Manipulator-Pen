@@ -45,7 +45,7 @@ int count2 = (pointAm) / 2 + 2;
 // === ФЛАГИ ХОМИНГА (ПОИСКА НУЛЯ) === //
 bool state_home_0 = 0;
 bool state_home_1 = 0;
-bool state_home_encoder_0 = 0;
+bool state_home_encoder_0 = 0; // ?
 bool state_home_encoder_1 = 0;
 
 // === СОСТОЯНИЯ КНОПОК РУЧНОГО УПРАВЛЕНИЯ === //
@@ -70,12 +70,14 @@ void setup() {
     
     Serial.begin(115200);
     //Serial.println(L);
+
     // добавляем шаговики на оси
     planner.addStepper(0, stepper1);  // ось 0
     planner.addStepper(1, stepper2_2);  // ось 1
     
     planner2.addStepper(0, stepper3);  // ось 0
     planner2.addStepper(1, stepper2);  // ось 1
+
     // устанавливаем ускорение и скорость
     planner.setAcceleration(0);
     planner.setMaxSpeed(600);
@@ -83,10 +85,7 @@ void setup() {
     planner2.setAcceleration(0);
     planner2.setMaxSpeed(600);  //400
     
-    
     // L = L/1.44;
-    
-    
     
     //Serial.println(path[0][0]);
     //Serial.println(path[1][0]);
@@ -102,21 +101,19 @@ void loop() {
     planner2.tick();
     
     
-    /*  if (Serial.available() > 0 && State == false) {
-    for (int i = 0; i <= pointAm; i++) {
-    Serial.print(path2[i + 1][0]);
-    Serial.print(" ");
-    Serial.println(path2[i + 1][1]);
-    
-    
-    
-    }
-    State = true;
+    /*  
+    if (Serial.available() > 0 && State == false) {
+        for (int i = 0; i <= pointAm; i++) {
+            Serial.print(path2[i + 1][0]);
+            Serial.print(" ");
+            Serial.println(path2[i + 1][1]);
+        }
+        State = true;
     }
     */ 
     
-    if (Serial.available()!=0) {
-        read=(char)Serial.read();
+    if (Serial.available() != 0) {
+        read = (char)Serial.read();
     }
     
     state_switch_0 = !digitalRead(LIM_SW_X);
