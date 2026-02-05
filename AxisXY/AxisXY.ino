@@ -54,195 +54,195 @@ bool last_target = 0;
 
 
 void setup() {
-  pinMode(Z_Pin, INPUT_PULLUP);
-  pinMode(button1Pin, INPUT);
-  pinMode(button2Pin, INPUT);
-  pinMode(button3Pin, INPUT);
-  pinMode(button4Pin, INPUT);
-  pinMode(LIMSW_X, INPUT_PULLUP);
-
-  pinMode(A0, INPUT);
-
-  Serial.begin(115200);
-  //Serial.println(L);
-  // добавляем шаговики на оси
-  planner.addStepper(0, stepper1);  // ось 0
-  planner.addStepper(1, stepper2_2);  // ось 1
-
-  planner2.addStepper(0, stepper3);  // ось 0
-  planner2.addStepper(1, stepper2);  // ось 1
-  // устанавливаем ускорение и скорость
-  planner.setAcceleration(0);
-  planner.setMaxSpeed(600);
-
-  planner2.setAcceleration(0);
-  planner2.setMaxSpeed(600);  //400
-
-
-  // L = L/1.44;
-
-
-
-  //Serial.println(path[0][0]);
-  //Serial.println(path[1][0]);
-
-  planner.setSpeed(0, -500);
-  planner2.setSpeed(0, 500);  //300
+    pinMode(Z_Pin, INPUT_PULLUP);
+    pinMode(button1Pin, INPUT);
+    pinMode(button2Pin, INPUT);
+    pinMode(button3Pin, INPUT);
+    pinMode(button4Pin, INPUT);
+    pinMode(LIMSW_X, INPUT_PULLUP);
+    
+    pinMode(A0, INPUT);
+    
+    Serial.begin(115200);
+    //Serial.println(L);
+    // добавляем шаговики на оси
+    planner.addStepper(0, stepper1);  // ось 0
+    planner.addStepper(1, stepper2_2);  // ось 1
+    
+    planner2.addStepper(0, stepper3);  // ось 0
+    planner2.addStepper(1, stepper2);  // ось 1
+    // устанавливаем ускорение и скорость
+    planner.setAcceleration(0);
+    planner.setMaxSpeed(600);
+    
+    planner2.setAcceleration(0);
+    planner2.setMaxSpeed(600);  //400
+    
+    
+    // L = L/1.44;
+    
+    
+    
+    //Serial.println(path[0][0]);
+    //Serial.println(path[1][0]);
+    
+    planner.setSpeed(0, -500);
+    planner2.setSpeed(0, 500);  //300
 }
 char read='f'; 
 char read_buf='f'; 
 static uint32_t s=0;
 
 void loop() {
-  //delay(10);
-  // здесь происходит движение моторов, вызывать как можно чаще
-  planner.tick();
-  planner2.tick();
-
-
-/*  if (Serial.available() > 0 && State == false) {
+    //delay(10);
+    // здесь происходит движение моторов, вызывать как можно чаще
+    planner.tick();
+    planner2.tick();
+    
+    
+    /*  if (Serial.available() > 0 && State == false) {
     for (int i = 0; i <= pointAm; i++) {
-      Serial.print(path2[i + 1][0]);
-      Serial.print(" ");
-      Serial.println(path2[i + 1][1]);
+    Serial.print(path2[i + 1][0]);
+    Serial.print(" ");
+    Serial.println(path2[i + 1][1]);
     
     
     
     }
     State = true;
-  }
-*/ 
-
-if (Serial.available()!=0){
-read=(char)Serial.read();
-}
-
-  state_switch_0 = !digitalRead(LIMSW_X);
-  state_switch_1 = !digitalRead(Z_Pin);
-
-
-  Status1 = digitalRead(button1Pin);
-  Status2 = digitalRead(button2Pin);
-
-  Status3 = digitalRead(button3Pin);
-  Status4 = digitalRead(button4Pin);
-
-  int value = analogRead(A0);
-  int moveX_state = decodeState(value); // -1 0 1
-
-  Serial.print("Value: ");
-  Serial.print(value);
-  Serial.print(" → State: ");
-  Serial.println(moveX_state);
-
-//   if (moveX_state == 1) {Status1 == LOW;}
-//   else if (moveX_state == -1) {Status2 == LOW;}
-
-  //Обработка концевика 0
-  static uint32_t tmr4;
-  if (pState_0 != state_switch_0 && millis() - tmr4 >= BTN_DEB) {
-    tmr4 = millis();
-    pState_0 = state_switch_0;
-    hold_0 = false;  // сброс флага удержания
-    if (state_switch_0) {
-      planner.setSpeed(0, 0);
-      planner.brake();
-      planner.reset();
-      planner.resume();
-      if (planner.ready()) {
-        planner.setTarget(path[0]);
-        state_home_0 = 1;
-        state_home_encoder_0 = 1;
-      }
     }
-  }
-
-
-  //Обработка концевика 1
-  static uint32_t tmr5;
-  if (pState_1 != state_switch_1 && state_home_encoder_1 == 0 && millis() - tmr5 >= BTN_DEB) {
-    tmr5 = millis();
-    pState_1 = state_switch_1;
-    hold_1 = false;  // сброс флага удержания
-    if (state_switch_1) {
-      planner2.setSpeed(0, 0);
-      planner2.brake();
-      planner2.reset();
-      planner2.resume();
-      if (planner2.ready()) {
-        planner2.setTarget(path2[1]);
-        state_home_1 = 1;
-        state_home_encoder_1 = 1;
-      }
+    */ 
+    
+    if (Serial.available()!=0){
+        read=(char)Serial.read();
     }
-  }
-
-  if (Status3 or Status4 or state_home_0 or read == 'a' or read == 'b') {
-  Status1 = 0;
-  Status2 = 0;
-    if (planner.ready()) {
-      last_target = state_target;
-      if (state_home_0 == 1) {
-        state_home_0 = 0;
-        planner.reset();
-        planner.setTarget(path[(pointAm/2)+2]);
-
-      } else if (state_home_0 == 0) {
-
-        planner.setTarget(path[count]);
-
-        if (Status4 == true or read == 'a') {
-
-          //planner.setTarget(path[count+1]);  // загружаем новую точку (начнётся с 0)
-          if (count < pointAm-1) {
-            ++count;
-          } else count = pointAm-1;
+    
+    state_switch_0 = !digitalRead(LIMSW_X);
+    state_switch_1 = !digitalRead(Z_Pin);
+    
+    
+    Status1 = digitalRead(button1Pin);
+    Status2 = digitalRead(button2Pin);
+    
+    Status3 = digitalRead(button3Pin);
+    Status4 = digitalRead(button4Pin);
+    
+    int value = analogRead(A0);
+    int moveX_state = decodeState(value); // -1 0 1
+    
+    Serial.print("Value: ");
+    Serial.print(value);
+    Serial.print(" → State: ");
+    Serial.println(moveX_state);
+    
+    //   if (moveX_state == 1) {Status1 == LOW;}
+    //   else if (moveX_state == -1) {Status2 == LOW;}
+    
+    //Обработка концевика 0
+    static uint32_t tmr4;
+    if (pState_0 != state_switch_0 && millis() - tmr4 >= BTN_DEB) {
+        tmr4 = millis();
+        pState_0 = state_switch_0;
+        hold_0 = false;  // сброс флага удержания
+        if (state_switch_0) {
+            planner.setSpeed(0, 0);
+            planner.brake();
+            planner.reset();
+            planner.resume();
+            if (planner.ready()) {
+                planner.setTarget(path[0]);
+                state_home_0 = 1;
+                state_home_encoder_0 = 1;
+            }
         }
-
-        if (Status3 == true or read == 'b') {
-          if (count > 3) --count;
-          else count = 3;  //0
-          //planner.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
-        }
-      }
     }
-  }
-
-
-
-
-  if (Status1 or Status2 or read == 'c' or read == 'd') {
-  Status3 = 0;
-  Status4 = 0;
-   
-    if (planner2.ready()) {
-      if (state_home_1 == 1) {
-        state_home_1 = 0;
-        planner2.reset();
-        planner2.setTarget(path2[count2]);
-      } else if (state_home_1 == 0) {
-        planner2.setTarget(path2[count2]);
-
-
-        if (Status2 == true or read=='c') {
-          if (count2 < pointAm) {
-            ++count2;
-          } else count2 = pointAm;
+    
+    
+    //Обработка концевика 1
+    static uint32_t tmr5;
+    if (pState_1 != state_switch_1 && state_home_encoder_1 == 0 && millis() - tmr5 >= BTN_DEB) {
+        tmr5 = millis();
+        pState_1 = state_switch_1;
+        hold_1 = false;  // сброс флага удержания
+        if (state_switch_1) {
+            planner2.setSpeed(0, 0);
+            planner2.brake();
+            planner2.reset();
+            planner2.resume();
+            if (planner2.ready()) {
+                planner2.setTarget(path2[1]);
+                state_home_1 = 1;
+                state_home_encoder_1 = 1;
+            }
         }
-
-        //возвращает обратно
-        if (Status1 == true or read=='d') {
-          if (count2 > 4) --count2;
-          else count2 = 4;  //0
-        }
-      }
     }
- }
+    
+    if (Status3 or Status4 or state_home_0 or read == 'a' or read == 'b') {
+        Status1 = 0;
+        Status2 = 0;
+        if (planner.ready()) {
+            last_target = state_target;
+            if (state_home_0 == 1) {
+                state_home_0 = 0;
+                planner.reset();
+                planner.setTarget(path[(pointAm/2)+2]);
+                
+            } else if (state_home_0 == 0) {
+                
+                planner.setTarget(path[count]);
+                
+                if (Status4 == true or read == 'a') {
+                    
+                    //planner.setTarget(path[count+1]);  // загружаем новую точку (начнётся с 0)
+                    if (count < pointAm-1) {
+                        ++count;
+                    } else count = pointAm-1;
+                }
+                
+                if (Status3 == true or read == 'b') {
+                    if (count > 3) --count;
+                    else count = 3;  //0
+                    //planner.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
+                }
+            }
+        }
+    }
+    
+    
+    
+    
+    if (Status1 or Status2 or read == 'c' or read == 'd') {
+        Status3 = 0;
+        Status4 = 0;
+        
+        if (planner2.ready()) {
+            if (state_home_1 == 1) {
+                state_home_1 = 0;
+                planner2.reset();
+                planner2.setTarget(path2[count2]);
+            } else if (state_home_1 == 0) {
+                planner2.setTarget(path2[count2]);
+                
+                
+                if (Status2 == true or read=='c') {
+                    if (count2 < pointAm) {
+                        ++count2;
+                    } else count2 = pointAm;
+                }
+                
+                //возвращает обратно
+                if (Status1 == true or read=='d') {
+                    if (count2 > 4) --count2;
+                    else count2 = 4;  //0
+                }
+            }
+        }
+    }
 }
 
 int decodeState(int analogValue) {
-  if (analogValue < 100) return -1;      // ~0V
-  else if (analogValue < 600) return 0;  // ~2.5V
-  else return 1;                         // ~5V
+    if (analogValue < 100) return -1;      // ~0V
+    else if (analogValue < 600) return 0;  // ~2.5V
+    else return 1;                         // ~5V
 }
 
