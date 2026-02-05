@@ -19,7 +19,7 @@ const int path2[][2] ={{77, 0}, {0, 0}, {1716, 880}, {1693, 859}, {1670, 840}, {
 
 constexpr uint8_t LIM_SW_X = 11;
 constexpr uint8_t BTN_DEBOUNCE = 50;
-constexpr uint8_t BTN_HOLD = 500;
+constexpr uint8_t BTN_HOLD = 500; // ?
 
 // === УПРАВЛЕНИЕ ДВИГАТЕЛЯМИ === //
 Stepper<STEPPER2WIRE> stepper1(5, 4);
