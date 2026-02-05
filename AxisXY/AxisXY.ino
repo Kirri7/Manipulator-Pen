@@ -56,13 +56,8 @@ bool Status2 = 0;
 bool Status3 = 0;
 bool Status4 = 0;
 
-// === СЕРВИСНЫЕ ПЕРЕМЕННЫЕ (удалить некоторые) === //
+// === СЕРВИСНЫЕ ПЕРЕМЕННЫЕ === //
 char read = 'f'; 
-
-bool state_target = 0;
-bool last_target = 0;
-char read_buf = 'f'; 
-static uint32_t s = 0;
 
 
 void setup() {
@@ -190,7 +185,6 @@ void loop() {
         Status1 = 0;
         Status2 = 0;
         if (planner.ready()) {
-            last_target = state_target;
             if (state_home_0 == 1) {
                 state_home_0 = 0;
                 planner.reset();
