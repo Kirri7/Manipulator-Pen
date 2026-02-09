@@ -6,9 +6,10 @@ void setup() {
 
 void loop() {
   // Пример передачи трёх состояний
-  sendState(1); delay(1000);  // 0V
-  sendState(2); delay(1000);  // 2.5V
-  sendState(3); delay(1000);  // 5V
+  int delay = 2000;
+  sendState(1); delay(delay);  // 0V
+  sendState(2); delay(delay);  // 2.5V
+  sendState(3); delay(delay);  // 5V
 }
 
 void sendState(int state) {
