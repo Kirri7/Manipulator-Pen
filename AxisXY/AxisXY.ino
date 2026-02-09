@@ -129,10 +129,11 @@ void loop() {
     int value = analogRead(A0);
     int moveX_state = decodeState(value); // -1 0 1
     
-    Serial.print("Value: ");
-    Serial.print(value);
-    Serial.print(" → State: ");
-    Serial.println(moveX_state);
+    // ! не печатать в Serail, когда провода подключены
+    // Serial.print("Value: ");
+    // Serial.print(value);
+    // Serial.print(" → State: ");
+    // Serial.println(moveX_state);
     
     // TODO try this
     if (moveX_state == 1) {Status1 = LOW;}
