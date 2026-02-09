@@ -135,9 +135,16 @@ void loop() {
     // Serial.print(" → State: ");
     // Serial.println(moveX_state);
     
-    // TODO try this
-    if (moveX_state == 1) {Status1 = LOW;}
-    else if (moveX_state == -1) {Status2 = LOW;}
+    if (moveX_state == 1) {
+        Status1 = LOW;
+        Status2 = HIGH; // выключаем противоположное направление
+    } else if (moveX_state == -1) {
+        Status2 = LOW; 
+        Status1 = HIGH; // выключаем противоположное направление
+    } else {
+        Status1 = HIGH;
+        Status2 = HIGH; // останавливаем при нейтральной позиции
+    }
     
     //Обработка концевика 0
     static uint32_t tmr4;
