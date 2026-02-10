@@ -126,7 +126,16 @@ void loop() {
     Status3 = digitalRead(button3Pin);
     Status4 = digitalRead(button4Pin);
     
-    int value = analogRead(A0);
+    // int value = analogRead(A0);
+
+    long sum = 0;
+    constexpr uint8_t iters = 20;
+    for (uint8_t i = 0; i < iters; i++) {
+        sum += analogRead(A0); // TODO это приводит к "дражанию"
+        delayMicroseconds(1);
+    }
+    uint16_t value = sum / iters;
+
     int moveX_state = decodeState(value); // -1 0 1
     
     // ! не печатать в Serail, когда провода подключены
@@ -247,9 +256,9 @@ void loop() {
     }
 }
 
-int decodeState(int analogValue) {
+int decodeState(uint16_t analogValue) {
     if (analogValue < 100) return -1;      // ~0V
-    else if (analogValue < 600) return 0;  // ~2.5V
+    else if (analogValue < 850) return 0;  // ~2.5V
     else return 1;                         // ~5V
 }
 
