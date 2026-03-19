@@ -2,6 +2,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.println("Arduino готов!");
+  Serial.flush(); // Ждем отправки приветствия
 }
 
 void loop() {
@@ -28,4 +29,5 @@ void loop() {
     }
   }
   delay(10);
+  Serial.flush();
 }
