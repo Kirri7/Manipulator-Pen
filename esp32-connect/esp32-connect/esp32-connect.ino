@@ -1,5 +1,6 @@
 // ESP32 open server on port 10000 to receive a flaot
 
+#include <Arduino.h>
 #include <WiFi.h>
 #define LED_BUILTIN 2
 
@@ -11,6 +12,7 @@ const char* password = "xxx";
 WiFiServer server(10000);  // server port to listen on
 
 void setup() {
+    pinMode(LED_BUILTIN, OUTPUT);
     Serial.begin(115200);
     // setup Wi-Fi network with SSID and password
     Serial.printf("Connecting to %s\n", ssid);
