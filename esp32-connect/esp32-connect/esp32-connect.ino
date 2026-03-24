@@ -49,14 +49,14 @@ void loop() {
         }
         // if data available from client read and display it
         int length;
-        float value;
+        int32_t value;
         if ((length = client.available()) > 0) {
             //str = client.readStringUntil('\n');  // read entire response
             Serial.printf("Received length %d - ", length);
             // if data is correct length read and display it
             if (length == sizeof(value)) {
                 client.readBytes((char*)&value, sizeof(value));
-                Serial.printf("value %f \n", value);
+                Serial.printf("value %d \n", value);
             } else
             while (client.available()) Serial.print((char)client.read());  // discard corrupt packet
         }
