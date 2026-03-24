@@ -56,7 +56,11 @@ void loop() {
             // if data is correct length read and display it
             if (length == sizeof(value)) {
                 client.readBytes((char*)&value, sizeof(value));
-                Serial.printf("value %d \n", value);
+                bool left = (value & (1 << 0)) != 0;
+                bool right = (value & (1 << 8)) != 0;
+                bool up = (value & (1 << 16)) != 0;
+                bool down = (value & (1 << 24)) != 0;
+                Serial.printf("value %d, left %d, right %d, up %d, down %d \n", value, left, right, up, down);
             } else
             while (client.available()) Serial.print((char)client.read());  // discard corrupt packet
         }
