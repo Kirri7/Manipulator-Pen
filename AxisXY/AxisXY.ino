@@ -1,6 +1,7 @@
 #include "GyverPlanner.h"
 #include <Arduino.h>
 #include <pins_arduino.h>
+#include <WiFi.h>
 
 // A2-5
 #define button1Pin 13
@@ -8,7 +9,7 @@
 #define button3Pin 14
 #define button4Pin 27
 const int Z_Pin = 17;
-
+#define LED_BUILTIN 2
 
 const int pointAm = 150;  // количество точек в круге
 int R = 100;              //100           // радиус круга
@@ -55,9 +56,15 @@ bool Status4 = 0;
 bool state_target = 0;
 bool last_target = 0;
 
+const char* ssid = "xxx";
+const char* password = "xxx";
 
+WiFiServer server(10000);  // server port to listen on
+
+void printWifiStatus();
 
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(Z_Pin, INPUT_PULLUP);
   pinMode(button1Pin, INPUT);
   pinMode(button2Pin, INPUT);
@@ -90,10 +97,27 @@ void setup() {
 
   planner.setSpeed(0, -500);
   planner2.setSpeed(0, 500);  //300
+
+  // setup Wi-Fi network with SSID and password
+  Serial.printf("Connecting to %s\n", ssid);
+  Serial.printf("\nattempting to connect to WiFi network SSID '%s' password '%s' \n", ssid, password);
+  // attempt to connect to Wifi network:
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+      Serial.print('.');
+      delay(500);
+  }
+  server.begin();
+  // you're connected now, so print out the status:
+  digitalWrite(LED_BUILTIN, HIGH);
+  printWifiStatus();
+  Serial.println(" listening on port 10000");
+  Serial.flush();
 }
 char readc='f'; 
 char read_buf='f'; 
 static uint32_t s=0;
+bool alreadyConnected = false;  // whether or not the client was connected previously
 
 void loop() {
   //delay(10);
@@ -129,6 +153,40 @@ readc=(char)Serial.read();
   Status3 = digitalRead(button3Pin);
   Status4 = digitalRead(button4Pin);
 
+
+  static WiFiClient client;
+  static int16_t seqExpected = 0;
+  bool left;
+  bool right;
+  bool up;
+  bool down;
+  if (!client) {
+      client = server.available();  // Listen for incoming clients
+      digitalWrite(LED_BUILTIN, LOW);
+  }
+  if (client) {                   // if client connected
+    if (!alreadyConnected) {
+        // clead out the input buffer:
+        client.flush();
+        alreadyConnected = true;
+        digitalWrite(LED_BUILTIN, HIGH);
+    }
+    // if data available from client read and display it
+    int length;
+    int32_t value;
+    if ((length = client.available()) > 0) {
+        //str = client.readStringUntil('\n');  // read entire response
+        // if data is correct length read and display it
+        if (length == sizeof(value)) {
+            client.readBytes((char*)&value, sizeof(value));
+            left = (value & (1 << 0)) != 0;
+            right = (value & (1 << 8)) != 0;
+            up = (value & (1 << 16)) != 0;
+            down = (value & (1 << 24)) != 0;
+        } else
+        while (client.available()) {};  // discard corrupt packet
+    }
+  }
 
   //Обработка концевика 0
   static uint32_t tmr4;
@@ -170,7 +228,7 @@ readc=(char)Serial.read();
   }
 
   // вперёд-назад
-  if (Status3 or Status4 or state_home_0 or readc == 'a' or readc == 'b') {
+  if (Status3 or Status4 or state_home_0 or readc == 'a' or readc == 'b' or up or down) {
   Status1 = 0;
   Status2 = 0;
     if (planner.ready()) {
@@ -184,7 +242,7 @@ readc=(char)Serial.read();
 
         planner.setTarget(path[count]);
 
-        if (Status4 == true or readc == 'a') {
+        if (Status4 == true or readc == 'a' or up) {
 
           //planner.setTarget(path[count+1]);  // загружаем новую точку (начнётся с 0)
           if (count < pointAm-1) {
@@ -192,7 +250,7 @@ readc=(char)Serial.read();
           } else count = pointAm-1;
         }
 
-        if (Status3 == true or readc == 'b') {
+        if (Status3 == true or readc == 'b' or down) {
           if (count > 3) --count;
           else count = 3;  //0
           //planner.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
@@ -204,7 +262,7 @@ readc=(char)Serial.read();
 
 
   // по бокам - забвно, но при отключении крутится подъём инструмента
-  if (Status1 or Status2 or readc == 'c' or readc == 'd') {
+  if (Status1 or Status2 or readc == 'c' or readc == 'd' or left or right) {
   Status3 = 0;
   Status4 = 0;
    
@@ -217,18 +275,35 @@ readc=(char)Serial.read();
         planner2.setTarget(path2[count2]);
 
 
-        if (Status2 == true or readc=='c') {
+        if (Status2 == true or readc=='c' or left) {
           if (count2 < pointAm) {
             ++count2;
           } else count2 = pointAm;
         }
 
         //возвращает обратно
-        if (Status1 == true or readc=='d') {
+        if (Status1 == true or readc=='d' or right) {
           if (count2 > 4) --count2;
           else count2 = 4;  //0
         }
       }
     }
  }
+}
+
+void printWifiStatus() {
+    // print the SSID of the network you're attached to:
+    Serial.print("\nSSID: ");
+    Serial.println(WiFi.SSID());
+    
+    // print your WiFi shield's IP address:
+    IPAddress ip = WiFi.localIP();
+    Serial.print("IP Address: ");
+    Serial.println(ip);
+    
+    // print the received signal strength:
+    long rssi = WiFi.RSSI();
+    Serial.print("signal strength (RSSI):");
+    Serial.print(rssi);
+    Serial.println(" dBm");
 }
