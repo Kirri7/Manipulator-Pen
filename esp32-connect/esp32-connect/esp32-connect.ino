@@ -13,7 +13,7 @@ WiFiServer server(10000);  // server port to listen on
 
 void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial.begin(115200);
+    Serial.begin(2000000);
     // setup Wi-Fi network with SSID and password
     Serial.printf("Connecting to %s\n", ssid);
     Serial.printf("\nattempting to connect to WiFi network SSID '%s' password '%s' \n", ssid, password);
