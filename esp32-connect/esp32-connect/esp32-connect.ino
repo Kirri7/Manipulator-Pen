@@ -3,8 +3,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #define LED_BUILTIN 2
-#define serverPort 10000
-#define ledPin 2
+#define SERVER_PORT 10000
+#define LED_PIN 2
 
 const char* ssid = "xxx";
 const char* password = "xxx";
@@ -25,7 +25,7 @@ private:
     int16_t seqExpected;
 
 public:
-    WiFiReceiver(const bool& do_logging) : connected(false), seqExpected(0), log_to_serial(do_logging), server(serverPort) {}
+    WiFiReceiver(const bool& do_logging) : connected(false), seqExpected(0), log_to_serial(do_logging), server(SERVER_PORT) {}
     
     void begin() {
         printlnSerial("Connecting to " + String(ssid));
@@ -39,16 +39,16 @@ public:
         
         server.begin();
         printWifiStatus();
-        printlnSerial("Listening on port " + String(serverPort));
-        digitalWrite(ledPin, HIGH);
+        printlnSerial("Listening on port " + String(SERVER_PORT));
+        digitalWrite(LED_PIN, HIGH);
         delay(20);
-        digitalWrite(ledPin, LOW);
+        digitalWrite(LED_PIN, LOW);
     }
     
     ReceivedPhoneData receive() {
         if (!WiFi.isConnected()) {
             connected = false;
-            digitalWrite(ledPin, LOW);
+            digitalWrite(LED_PIN, LOW);
             printlnSerial("WiFiReceiver not initialized. Call begin() first.");
             return {false, false, false, false};
         }
@@ -64,7 +64,7 @@ public:
             if (!connected) {
                 client.flush();
                 connected = true;
-                digitalWrite(ledPin, HIGH);
+                digitalWrite(LED_PIN, HIGH);
                 printlnSerial("Client connected!");
             }
 
@@ -130,7 +130,7 @@ public:
 WiFiReceiver receiver(true);
 
 void setup() {
-    pinMode(ledPin, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
     Serial.begin(2000000);
 
     receiver.begin();
