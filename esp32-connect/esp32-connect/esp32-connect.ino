@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#define LED_BUILTIN 2
 #define SERVER_PORT 10000
 #define LED_PIN 2
 
@@ -57,7 +56,7 @@ public:
 
         if (!client) {
             connected = false;
-            digitalWrite(LED_BUILTIN, LOW);
+            digitalWrite(LED_PIN, LOW);
             client = server.available(); // Check for incoming clients
         }
         if (client) {
