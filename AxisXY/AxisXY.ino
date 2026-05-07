@@ -1,6 +1,5 @@
 #include "GyverPlanner.h"
 #include <Arduino.h>
-#include <pins_arduino.h>
 #include <WiFi.h>
 
 // A2-5
@@ -11,25 +10,38 @@
 const int Z_Pin = 17;
 #define LED_BUILTIN 2
 
-const int pointAm = 150;  // количество точек в круге
+const int pointAm = 57;  // количество точек в круге - кол-во точек в массиве
 int R = 100;              //100           // радиус круга
 float alfa = 36 * 3.14159 / 180;
 float L = 2 * R * sin(alfa / 2);
 float L2 = R * sin(alfa / 2);
 int dist = 100;
-const int32_t path[][2] = {{100, 0}, {0, 0}, {23, -26}, {46, -53}, {69, -79}, {92, -104}, {115, -129}, {138, -154}, {161, -178}, {184, -202}, {207, -226}, {230, -249}, {253, -272}, {276, -295}, {299, -317}, {322, -338}, {345, -360}, {368, -381}, {391, -401}, {414, -421}, {437, -441}, {460, -461}, {483, -480}, {506, -498}, {529, -517}, {552, -535}, {576, -552}, {599, -569}, {622, -586}, {645, -603}, {668, -619}, {691, -635}, {714, -650}, {737, -665}, {760, -680}, {783, -694}, {806, -708}, {829, -722}, {852, -735}, {875, -748}, {898, -760}, {921, -773}, {944, -784}, {967, -796}, {990, -807}, {1013, -818}, {1036, -828}, {1059, -838}, {1082, -848}, {1105, -857}, {1129, -866}, {1152, -875}, {1175, -883}, {1198, -891}, {1221, -899}, {1244, -906}, {1267, -913}, {1290, -919}, {1313, -926}, {1336, -931}, {1359, -937}, {1382, -942}, {1405, -947}, {1428, -951}, {1451, -956}, {1474, -959}, {1497, -963}, {1520, -966}, {1543, -969}, {1566, -971}, {1589, -973}, {1612, -975}, {1635, -976}, {1658, -977}, {1682, -978}, {1705, -978}, {1728, -978}, {1751, -978}, {1774, -977}, {1797, -976}, {1820, -975}, {1843, -973}, {1866, -971}, {1889, -969}, {1912, -966}, {1935, -963}, {1958, -959}, {1981, -956}, {2004, -951}, {2027, -947}, {2050, -942}, {2073, -937}, {2096, -931}, {2119, -926}, {2142, -919}, {2165, -913}, {2188, -906}, {2211, -899}, {2235, -891}, {2258, -883}, {2281, -875}, {2304, -866}, {2327, -857}, {2350, -848}, {2373, -838}, {2396, -828}, {2419, -818}, {2442, -807}, {2465, -796}, {2488, -784}, {2511, -773}, {2534, -760}, {2557, -748}, {2580, -735}, {2603, -722}, {2626, -708}, {2649, -694}, {2672, -680}, {2695, -665}, {2718, -650}, {2741, -635}, {2764, -619}, {2788, -603}, {2811, -586}, {2834, -569}, {2857, -552}, {2880, -535}, {2903, -517}, {2926, -498}, {2949, -480}, {2972, -461}, {2995, -441}, {3018, -421}, {3041, -401}, {3064, -381}, {3087, -360}, {3110, -338}, {3133, -317}, {3156, -295}, {3179, -272}, {3202, -249}, {3225, -226}, {3248, -202}, {3271, -178}, {3294, -154}, {3317, -129}, {3341, -104}, {3364, -79}, {3387, -53}, {3410, -26}, {3433, 0}};
-const int32_t path2[][2] ={{77, 0}, {0, 0}, {1716, 880}, {1693, 859}, {1670, 840}, {1647, 820}, {1625, 801}, {1602, 782}, {1579, 764}, {1556, 745}, {1533, 727}, {1510, 710}, {1487, 692}, {1464, 675}, {1441, 658}, {1419, 642}, {1396, 625}, {1373, 609}, {1350, 594}, {1327, 578}, {1304, 563}, {1281, 548}, {1258, 534}, {1235, 519}, {1213, 505}, {1190, 492}, {1167, 478}, {1144, 465}, {1121, 452}, {1098, 439}, {1075, 427}, {1052, 415}, {1029, 403}, {1007, 392}, {984, 380}, {961, 369}, {938, 359}, {915, 348}, {892, 338}, {869, 328}, {846, 318}, {823, 309}, {801, 300}, {778, 291}, {755, 282}, {732, 274}, {709, 266}, {686, 258}, {663, 251}, {640, 243}, {617, 236}, {595, 229}, {572, 223}, {549, 217}, {526, 211}, {503, 205}, {480, 200}, {457, 194}, {434, 190}, {411, 185}, {389, 181}, {366, 176}, {343, 173}, {320, 169}, {297, 166}, {274, 162}, {251, 160}, {228, 157}, {205, 155}, {183, 153}, {160, 151}, {137, 149}, {114, 148}, {91, 147}, {68, 146}, {45, 146}, {22, 145}, {0, 145}, {-22, 146}, {-45, 146}, {-68, 147}, {-91, 148}, {-114, 149}, {-137, 151}, {-160, 153}, {-183, 155}, {-205, 157}, {-228, 160}, {-251, 162}, {-274, 166}, {-297, 169}, {-320, 173}, {-343, 176}, {-366, 181}, {-389, 185}, {-411, 190}, {-434, 194}, {-457, 200}, {-480, 205}, {-503, 211}, {-526, 217}, {-549, 223}, {-572, 229}, {-595, 236}, {-617, 243}, {-640, 251}, {-663, 258}, {-686, 266}, {-709, 274}, {-732, 282}, {-755, 291}, {-778, 300}, {-801, 309}, {-823, 318}, {-846, 328}, {-869, 338}, {-892, 348}, {-915, 359}, {-938, 369}, {-961, 380}, {-984, 392}, {-1007, 403}, {-1029, 415}, {-1052, 427}, {-1075, 439}, {-1098, 452}, {-1121, 465}, {-1144, 478}, {-1167, 492}, {-1190, 505}, {-1213, 519}, {-1235, 534}, {-1258, 548}, {-1281, 563}, {-1304, 578}, {-1327, 594}, {-1350, 609}, {-1373, 625}, {-1396, 642}, {-1419, 658}, {-1441, 675}, {-1464, 692}, {-1487, 710}, {-1510, 727}, {-1533, 745}, {-1556, 764}, {-1579, 782}, {-1602, 801}, {-1625, 820}, {-1647, 840}, {-1670, 859}};
 
+const int32_t path1[][1] = {
+{-3000},{-2900},{-2800},{-2700},{-2600},{-2500},{-2400},{-2300},{-2200},{-2100},{-2000},{-1900},{-1800},{-1700},{-1600},{-1500},{-1400},{-1300},{-1200},{-1100},{-1000},{-900},{-800},{-700},{-600},{-500},{-400},{-300},{-200},{-100},{0},{100},{200},{300},{400},{500},{600},{700},{800},{900},{1000},{1100},{1200},{1300},{1400},{1500},{1600},{1700},{1800},{1900},{2000},{2100},{2200},{2300},{2400},{2500},{2600}};
+
+const int32_t path2[][1] = {
+{-3000},{-2900},{-2800},{-2700},{-2600},{-2500},{-2400},{-2300},{-2200},{-2100},{-2000},{-1900},{-1800},{-1700},{-1600},{-1500},{-1400},{-1300},{-1200},{-1100},{-1000},{-900},{-800},{-700},{-600},{-500},{-400},{-300},{-200},{-100},{0},{100},{200},{300},{400},{500},{600},{700},{800},{900},{1000},{1100},{1200},{1300},{1400},{1500},{1600},{1700},{1800},{1900},{2000},{2100},{2200},{2300},{2400},{2500},{2600}};
+
+
+
+/*
+const int32_t path1[][1] = {
+{-300},{-290},{-280},{-270},{-260},{-250},{-240},{-230},{-220},{-210},{-200},{-190},{-180},{-170},{-160},{-150},{-140},{-130},{-120},{-110},{-100},{-90},{-80},{-70},{-60},{-50},{-40},{-30},{-20},{-10},{0},{10},{20},{30},{40},{50},{60},{70},{80},{90},{100},{110},{120},{130},{140},{150},{160},{170},{180},{190},{200},{210},{220},{230},{240},{250},{260}};
+
+const int32_t path2[][1] = {
+{-300},{-290},{-280},{-270},{-260},{-250},{-240},{-230},{-220},{-210},{-200},{-190},{-180},{-170},{-160},{-150},{-140},{-130},{-120},{-110},{-100},{-90},{-80},{-70},{-60},{-50},{-40},{-30},{-20},{-10},{0},{10},{20},{30},{40},{50},{60},{70},{80},{90},{100},{110},{120},{130},{140},{150},{160},{170},{180},{190},{200},{210},{220},{230},{240},{250},{260}};
+*/
 #define LIMSW_X 16
 #define BTN_DEB 50
 #define BTN_HOLD 500
 
-Stepper<STEPPER2WIRE> stepper1(5, 18);
-Stepper<STEPPER2WIRE> stepper2(4, 15);
-Stepper<STEPPER2WIRE> stepper2_2(4, 15);
-Stepper<STEPPER2WIRE> stepper3(19, 21);
-GPlanner<STEPPER2WIRE, 2> planner;
-GPlanner<STEPPER2WIRE, 2> planner2;
+Stepper<STEPPER2WIRE> MTR2(5, 18);
+Stepper<STEPPER2WIRE> MTR4(4, 15);
+// Stepper<STEPPER2WIRE> stepper2_2(4, 15);
+Stepper<STEPPER2WIRE> MTR1(19, 21);
+GPlanner<STEPPER2WIRE, 1> planner_mtr1;
+GPlanner<STEPPER2WIRE, 1> planner_mtr2;
 
 bool pState_0 = false;
 bool pStateSwitch_0 = false;
@@ -42,10 +54,13 @@ bool hold_1 = 0;
 
 bool Z1State = 0;
 bool State = false;
-int count = (pointAm) / 2 + 2;
-int count2 = (pointAm) / 2 + 2;
-bool state_home_0 = 0;
-bool state_home_1 = 0;
+//int count = (pointAm) / 2 + 2;
+//int count2 = (pointAm) / 2 + 2;
+int count = 31;
+int count2 = 31;
+
+bool state_home_0 = 1;
+bool state_home_1 = 1;
 bool state_home_encoder_0 = 0;
 bool state_home_encoder_1 = 0;
 bool Status1 = 0;
@@ -75,17 +90,17 @@ void setup() {
   Serial.begin(115200);
   //Serial.println(L);
   // добавляем шаговики на оси
-  planner.addStepper(0, stepper1);  // ось 0
-  planner.addStepper(1, stepper2_2);  // ось 1
+  planner_mtr2.addStepper(0, MTR2);  // ось 0
+  // planner_mtr2.addStepper(1, stepper2_2);  // ось 1
 
-  planner2.addStepper(0, stepper3);  // ось 0
-  planner2.addStepper(1, stepper2);  // ось 1
+  planner_mtr1.addStepper(0, MTR1);  // ось 0
+  //planner_mtr1.addStepper(1, MTR4);  // ось 1
   // устанавливаем ускорение и скорость
-  planner.setAcceleration(0);
-  planner.setMaxSpeed(600);
+  planner_mtr2.setAcceleration(600);
+  planner_mtr2.setMaxSpeed(1500);
 
-  planner2.setAcceleration(0);
-  planner2.setMaxSpeed(600);  //400
+  planner_mtr1.setAcceleration(600);
+  planner_mtr1.setMaxSpeed(1500);  //400
 
 
   // L = L/1.44;
@@ -95,8 +110,8 @@ void setup() {
   //Serial.println(path[0][0]);
   //Serial.println(path[1][0]);
 
-  planner.setSpeed(0, -500);
-  planner2.setSpeed(0, 500);  //300
+  planner_mtr2.setSpeed(0,500);
+  planner_mtr1.setSpeed(0, 500);  //300
 
   // setup Wi-Fi network with SSID and password
   Serial.printf("Connecting to %s\n", ssid);
@@ -113,6 +128,14 @@ void setup() {
   printWifiStatus();
   Serial.println(" listening on port 10000");
   Serial.flush();
+      planner_mtr2.stop();
+      planner_mtr2.reset();
+      planner_mtr2.resume();
+  
+        planner_mtr1.stop();
+      planner_mtr1.reset();
+      planner_mtr1.resume();
+
 }
 char readc='f'; 
 char read_buf='f'; 
@@ -122,8 +145,8 @@ bool alreadyConnected = false;  // whether or not the client was connected previ
 void loop() {
   //delay(10);
   // здесь происходит движение моторов, вызывать как можно чаще
-  planner.tick();
-  planner2.tick();
+  planner_mtr2.tick();
+  planner_mtr1.tick();
 
 
 /*  if (Serial.available() > 0 && State == false) {
@@ -179,15 +202,17 @@ readc=(char)Serial.read();
         // if data is correct length read and display it
         if (length == sizeof(value)) {
             client.readBytes((char*)&value, sizeof(value));
-            left = (value & (1 << 0)) != 0;
-            right = (value & (1 << 8)) != 0;
+            right = (value & (1 << 0)) != 0;
+            left = (value & (1 << 8)) != 0;
             up = (value & (1 << 16)) != 0;
             down = (value & (1 << 24)) != 0;
+            // left = 1;
         } else
         while (client.available()) {};  // discard corrupt packet
     }
   }
 
+/*
   //Обработка концевика 0
   static uint32_t tmr4;
   if (pState_0 != state_switch_0 && millis() - tmr4 >= BTN_DEB) {
@@ -195,12 +220,12 @@ readc=(char)Serial.read();
     pState_0 = state_switch_0;
     hold_0 = false;  // сброс флага удержания
     if (state_switch_0) {
-      planner.setSpeed(0, 0);
-      planner.brake();
-      planner.reset();
-      planner.resume();
-      if (planner.ready()) {
-        planner.setTarget(path[0]);
+      planner_mtr2.setSpeed(0,0);
+      planner_mtr2.stop();
+      planner_mtr2.reset();
+      planner_mtr2.resume();
+      if (planner_mtr2.ready()) {
+        planner_mtr2.setTarget(path2[0]);
         state_home_0 = 1;
         state_home_encoder_0 = 1;
       }
@@ -215,45 +240,52 @@ readc=(char)Serial.read();
     pState_1 = state_switch_1;
     hold_1 = false;  // сброс флага удержания
     if (state_switch_1) {
-      planner2.setSpeed(0, 0);
-      planner2.brake();
-      planner2.reset();
-      planner2.resume();
-      if (planner2.ready()) {
-        planner2.setTarget(path2[1]);
+      planner_mtr1.setSpeed(0,0);
+      planner_mtr1.stop();
+      planner_mtr1.reset();
+      planner_mtr1.resume();
+      if (planner_mtr1.ready()) {
+        planner_mtr1.setTarget(path1[0]);
         state_home_1 = 1;
         state_home_encoder_1 = 1;
       }
     }
   }
+*/
+
 
   // вперёд-назад
   if (Status3 or Status4 or state_home_0 or readc == 'a' or readc == 'b' or up or down) {
   Status1 = 0;
   Status2 = 0;
-    if (planner.ready()) {
+    if (planner_mtr2.ready()) {
       last_target = state_target;
       if (state_home_0 == 1) {
         state_home_0 = 0;
-        planner.reset();
-        planner.setTarget(path[(pointAm/2)+2]);
-
+        // planner_mtr2.reset();
+        planner_mtr2.setTarget(path2[(pointAm/2)+2]);
+        Serial.println("up/down");
+        Serial.println("middle");
+        Serial.println((pointAm/2)+2);
       } else if (state_home_0 == 0) {
 
-        planner.setTarget(path[count]);
+        Serial.println("up/down");
+        Serial.println("count");
+        Serial.println(count);
+        planner_mtr2.setTarget(path2[count]);
 
         if (Status4 == true or readc == 'a' or up) {
 
-          //planner.setTarget(path[count+1]);  // загружаем новую точку (начнётся с 0)
+          //planner_mtr2.setTarget(path[count+1]);  // загружаем новую точку (начнётся с 0)
           if (count < pointAm-1) {
-            ++count;
+            count += gstep;
           } else count = pointAm-1;
         }
 
         if (Status3 == true or readc == 'b' or down) {
-          if (count > 3) --count;
+          if (count > 3) count -= gstep;
           else count = 3;  //0
-          //planner.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
+          //planner_mtr2.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
         }
       }
     }
@@ -266,13 +298,19 @@ readc=(char)Serial.read();
   Status3 = 0;
   Status4 = 0;
    
-    if (planner2.ready()) {
+    if (planner_mtr1.ready()) {
       if (state_home_1 == 1) {
         state_home_1 = 0;
-        planner2.reset();
-        planner2.setTarget(path2[count2]);
+        // planner_mtr1.reset();
+        planner_mtr1.setTarget(path1[count2]);
+                Serial.println("left/right");
+        Serial.println("count2");
+        Serial.println(count2);
       } else if (state_home_1 == 0) {
-        planner2.setTarget(path2[count2]);
+        planner_mtr1.setTarget(path1[count2]);
+                Serial.println("left/right");
+        Serial.println("count2");
+        Serial.println(count2);
 
 
         if (Status2 == true or readc=='c' or left) {
