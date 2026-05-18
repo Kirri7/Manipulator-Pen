@@ -119,6 +119,7 @@ MPU6050 mpu;
 // format used for the InvenSense teapot demo
 //#define OUTPUT_TEAPOT
 
+#define SEND_MANIPULATOR_COMMANDS
 
 
 #define INTERRUPT_PIN 2  // use pin 2 on Arduino Uno & most boards
@@ -145,6 +146,11 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\n' };
 
+// Пороги для определения направления движения
+#define YAW_THRESHOLD     15.0f   // порог поворота влево/вправо (градусы)
+#define PITCH_THRESHOLD   15.0f   // порог наклона вверх/вниз (градусы)
+#define MIN_TILT_ANGLE    10.0f   // минимальный угол наклона для активации
+
 
 
 // ================================================================
@@ -154,6 +160,42 @@ uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
     mpuInterrupt = true;
+}
+
+// ================================================================
+// ===              MANIPULATOR CONTROL FUNCTION                ===
+// ================================================================
+
+void sendManipulatorCommand(float* ypr) {
+    int32_t command = 0;
+    
+    float yawDegrees = ypr[0] * 180/M_PI;
+    float pitchDegrees = ypr[1] * 180/M_PI;
+    float rollDegrees = ypr[2] * 180/M_PI;
+    
+    // Определяем направление движения на основе углов
+    // Right - поворот вправо (положительный yaw)
+    if (yawDegrees > YAW_THRESHOLD) {
+        command |= (1 << 0);  // set bit 0
+    }
+    
+    // Left - поворот влево (отрицательный yaw)
+    if (yawDegrees < -YAW_THRESHOLD) {
+        command |= (1 << 8);  // set bit 8
+    }
+    
+    // Up - наклон вперед (положительный pitch)
+    if (pitchDegrees > PITCH_THRESHOLD) {
+        command |= (1 << 16);  // set bit 16
+    }
+    
+    // Down - наклон назад (отрицательный pitch)
+    if (pitchDegrees < -PITCH_THRESHOLD) {
+        command |= (1 << 24);  // set bit 24
+    }
+    
+    // Отправляем команду манипулятору через Serial
+    Serial.write((uint8_t*)&command, sizeof(command));
 }
 
 
@@ -294,6 +336,11 @@ void loop() {
             Serial.println(ypr[2] * 180/M_PI);
         #endif
 
+        #ifdef SEND_MANIPULATOR_COMMANDS
+            // Отправляем данные управления манипулятору
+            sendManipulatorCommand(ypr);
+        #endif
+            
         #ifdef OUTPUT_READABLE_REALACCEL
             // display real acceleration, adjusted to remove gravity
             mpu.dmpGetQuaternion(&q, fifoBuffer);
