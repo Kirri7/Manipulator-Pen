@@ -338,6 +338,9 @@ void loop() {
 
         #ifdef SEND_MANIPULATOR_COMMANDS
             // Отправляем данные управления манипулятору
+            mpu.dmpGetQuaternion(&q, fifoBuffer);
+            mpu.dmpGetGravity(&gravity, &q);
+            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
             sendManipulatorCommand(ypr);
         #endif
             
