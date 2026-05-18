@@ -3,10 +3,18 @@
 
 // Выбор режима получения данных:
 #define USE_WIFI_MODE  - пакеты приходят по WiFi
+#define USE_BLE_MODE   - пакеты приходят по BLE
 // без #define            - пакеты приходят по Serial
 
 #ifdef USE_WIFI_MODE
 #include <WiFi.h>
+#endif
+
+#ifdef USE_BLE_MODE
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEClient.h>
+#include <BLEScan.h>
 #endif
 
 // A2-5
@@ -85,6 +93,24 @@ WiFiServer server(10000);  // server port to listen on
 void printWifiStatus();
 #endif
 
+#ifdef USE_BLE_MODE
+// BLE Service and Characteristic UUIDs (from BLE-device)
+#define SERVICE_UUID        "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
+#define CHARACTERISTIC_UUID "fc18c54c-2f23-4c05-84bd-338ca880b786"
+
+static BLEUUID serviceUUID(SERVICE_UUID);
+static BLEUUID charUUID(CHARACTERISTIC_UUID);
+
+static boolean doConnect = false;
+static boolean connected = false;
+static BLERemoteCharacteristic* pRemoteCharacteristic;
+static BLEAdvertisedDevice* myDevice;
+
+void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
+                    uint8_t* pData, size_t length, bool isNotify);
+bool connectToServer();
+#endif
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(Z_Pin, INPUT_PULLUP);
@@ -136,6 +162,19 @@ void setup() {
   printWifiStatus();
   Serial.println(" listening on port 10000");
   Serial.flush();
+#endif
+
+#ifdef USE_BLE_MODE
+  Serial.println("Starting BLE Client application...");
+  BLEDevice::init("SimpleManipulator-BLE-Client");
+  
+  // Retrieve a Scanner and set the callback
+  BLEScan* pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setInterval(1349);
+  pBLEScan->setWindow(449);
+  pBLEScan->setActiveScan(true);
+  pBLEScan->start(5, false);  // Scan for 5 seconds
 #endif
       planner_mtr2.stop();
       planner_mtr2.reset();
@@ -207,6 +246,27 @@ void loop() {
         } else
         while (client.available()) {};  // discard corrupt packet
     }
+  }
+#elif defined(USE_BLE_MODE)
+  // BLE mode - handle connection and notifications
+  if (doConnect == true) {
+    if (connectToServer()) {
+      Serial.println("We are now connected to the BLE Server.");
+      digitalWrite(LED_BUILTIN, HIGH);
+    } else {
+      Serial.println("We have failed to connect to the server.");
+    }
+    doConnect = false;
+  }
+
+  if (connected) {
+    // Data is received via notifyCallback
+    // No action needed here, callback handles it
+  }
+  else if (doConnect == false && connected == false) {
+    // Restart scanning if not connected
+    Serial.println("Starting scan again...");
+    BLEDevice::getScan()->start(5, false);
   }
 #else
   // Serial mode - read commands from Serial
@@ -366,4 +426,145 @@ void printWifiStatus() {
     Serial.print(rssi);
     Serial.println(" dBm");
 }
+#endif
+
+#ifdef USE_BLE_MODE
+// BLE Notify callback - called when data is received from the BLE server
+static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
+                            uint8_t* pData, size_t length, bool isNotify)
+{
+  Serial.print("Notify callback for characteristic ");
+  Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+  Serial.print(" of data length ");
+  Serial.println(length);
+  
+  // The BLE-device sends JSON data like: {"yaw":...,"pitch":...,"roll":...,...}
+  // We need to parse this JSON and extract yaw/pitch values
+  // Convert to string for parsing
+  String jsonData((char*)pData);
+  
+  // Simple JSON parsing for yaw and pitch
+  int yawIdx = jsonData.indexOf("\"yaw\"");
+  int pitchIdx = jsonData.indexOf("\"pitch\"");
+  
+  if (yawIdx >= 0 && pitchIdx >= 0) {
+    // Extract yaw value
+    int colonIdx = jsonData.indexOf(':', yawIdx);
+    int commaIdx = jsonData.indexOf(',', colonIdx);
+    String yawStr = jsonData.substring(colonIdx + 1, commaIdx);
+    float yaw = yawStr.toFloat();
+    
+    // Extract pitch value
+    colonIdx = jsonData.indexOf(':', pitchIdx);
+    commaIdx = jsonData.indexOf(',', colonIdx);
+    String pitchStr = jsonData.substring(colonIdx + 1, commaIdx);
+    float pitch = pitchStr.toFloat();
+    
+    Serial.print("Yaw: ");
+    Serial.print(yaw);
+    Serial.print(", Pitch: ");
+    Serial.println(pitch);
+    
+    // Apply thresholds (same as BLE-device)
+    const float YAW_THRESHOLD = 15.0f;
+    const float PITCH_THRESHOLD = 15.0f;
+    
+    // Set direction flags based on yaw/pitch
+    right = (yaw > YAW_THRESHOLD);
+    left = (yaw < -YAW_THRESHOLD);
+    up = (pitch > PITCH_THRESHOLD);
+    down = (pitch < -PITCH_THRESHOLD);
+    
+    Serial.print("Commands - Left: ");
+    Serial.print(left);
+    Serial.print(", Right: ");
+    Serial.print(right);
+    Serial.print(", Up: ");
+    Serial.print(up);
+    Serial.print(", Down: ");
+    Serial.println(down);
+  }
+}
+
+// BLE Client Callbacks
+class MyClientCallback : public BLEClientCallbacks
+{
+  void onConnect(BLEClient* pclient)
+  {
+    Serial.println("BLE Connected");
+  }
+
+  void onDisconnect(BLEClient* pclient)
+  {
+    connected = false;
+    Serial.println("BLE Disconnected");
+  }
+};
+
+// Connect to the BLE Server
+bool connectToServer()
+{
+  Serial.print("Forming a connection to ");
+  Serial.println(myDevice->getAddress().toString().c_str());
+
+  BLEClient*  pClient  = BLEDevice::createClient();
+  Serial.println(" - Created client");
+
+  pClient->setClientCallbacks(new MyClientCallback());
+
+  /* Connect to the remote BLE Server */
+  pClient->connect(myDevice);
+  Serial.println(" - Connected to server");
+
+  /* Obtain a reference to the service */
+  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
+  if (pRemoteService == nullptr)
+  {
+    Serial.print("Failed to find our service UUID: ");
+    Serial.println(serviceUUID.toString().c_str());
+    pClient->disconnect();
+    return false;
+  }
+  Serial.println(" - Found our service");
+
+  /* Obtain a reference to the characteristic */
+  pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+  if (pRemoteCharacteristic == nullptr)
+  {
+    Serial.print("Failed to find our characteristic UUID: ");
+    Serial.println(charUUID.toString().c_str());
+    pClient->disconnect();
+    return false;
+  }
+  Serial.println(" - Found our characteristic");
+
+  /* Register for notifications */
+  if(pRemoteCharacteristic->canNotify())
+  {
+    pRemoteCharacteristic->registerForNotify(notifyCallback);
+    Serial.println(" - Registered for notifications");
+  }
+
+  connected = true;
+  return true;
+}
+
+// BLE Advertised Device Callbacks
+class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks
+{
+  void onResult(BLEAdvertisedDevice advertisedDevice)
+  {
+    Serial.print("BLE Advertised Device found: ");
+    Serial.println(advertisedDevice.toString().c_str());
+
+    /* Check if device advertises our service */
+    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID))
+    {
+      BLEDevice::getScan()->stop();
+      myDevice = new BLEAdvertisedDevice(advertisedDevice);
+      doConnect = true;
+      Serial.println(" - Found target device, will connect");
+    }
+  }
+};
 #endif
