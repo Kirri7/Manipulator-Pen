@@ -18,7 +18,7 @@ const int Z_Pin = 17;
 #define LED_BUILTIN 2
 
 const int pointAm = 57;  // кол-во точек в массиве
-int dist = 100;
+// int dist = 100;
 
 // Массивы для шаговых двигателей (по опыту - 50 шагов достаточно мало)
 const int32_t path1[][1] = {
