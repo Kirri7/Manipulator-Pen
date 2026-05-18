@@ -58,6 +58,7 @@ bool State = false;
 //int count2 = (pointAm) / 2 + 2;
 int count = 31;
 int count2 = 31;
+int gstep = 1;  // шаг перемещения по массиву точек
 
 bool state_home_0 = 1;
 bool state_home_1 = 1;
@@ -315,13 +316,13 @@ readc=(char)Serial.read();
 
         if (Status2 == true or readc=='c' or left) {
           if (count2 < pointAm) {
-            ++count2;
+            count2 += gstep;
           } else count2 = pointAm;
         }
 
         //возвращает обратно
         if (Status1 == true or readc=='d' or right) {
-          if (count2 > 4) --count2;
+          if (count2 > 4) count2 -= gstep;
           else count2 = 4;  //0
         }
       }
