@@ -11,7 +11,6 @@ const int Z_Pin = 17;
 #define LED_BUILTIN 2
 
 const int pointAm = 57;  // кол-во точек в массиве
-int R = 100;              //100           // радиус круга
 float alfa = 36 * 3.14159 / 180;
 float L = 2 * R * sin(alfa / 2);
 float L2 = R * sin(alfa / 2);
