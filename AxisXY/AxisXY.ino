@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 // Выбор режима получения данных:
-// #define USE_WIFI_MODE  - пакеты приходят по WiFi
+#define USE_WIFI_MODE  - пакеты приходят по WiFi
 // без #define            - пакеты приходят по Serial
 
 #ifdef USE_WIFI_MODE
