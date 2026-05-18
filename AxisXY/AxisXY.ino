@@ -10,7 +10,7 @@
 const int Z_Pin = 17;
 #define LED_BUILTIN 2
 
-const int pointAm = 57;  // количество точек в круге - кол-во точек в массиве
+const int pointAm = 57;  // кол-во точек в массиве
 int R = 100;              //100           // радиус круга
 float alfa = 36 * 3.14159 / 180;
 float L = 2 * R * sin(alfa / 2);
@@ -148,20 +148,6 @@ void loop() {
   // здесь происходит движение моторов, вызывать как можно чаще
   planner_mtr2.tick();
   planner_mtr1.tick();
-
-
-/*  if (Serial.available() > 0 && State == false) {
-    for (int i = 0; i <= pointAm; i++) {
-      Serial.print(path2[i + 1][0]);
-      Serial.print(" ");
-      Serial.println(path2[i + 1][1]);
-    
-    
-    
-    }
-    State = true;
-  }
-*/ 
 
 if (Serial.available()!=0){
 readc=(char)Serial.read();
