@@ -144,19 +144,19 @@ void mpu_initialize() {
 #define YAW_THRESHOLD     15.0f   // yaw threshold
 #define PITCH_THRESHOLD   15.0f   // pitch threshold
 
-void sendManipulatorCommand(float* ypr) {
-    int32_t command = 0;
+uint32_t buildManipulatorCommand(float* ypr) {
+    uint32_t command = 0;
     float yawDegrees = ypr[0] * 180/M_PI;
     float pitchDegrees = ypr[1] * 180/M_PI;
     // Right
-    if (yawDegrees > YAW_THRESHOLD) command |= (1 << 0);
+    if (yawDegrees > YAW_THRESHOLD) command |= (1u << 0);
     // Left
-    if (yawDegrees < -YAW_THRESHOLD) command |= (1 << 8);
+    if (yawDegrees < -YAW_THRESHOLD) command |= (1u << 8);
     // Up
-    if (pitchDegrees > PITCH_THRESHOLD) command |= (1 << 16);
+    if (pitchDegrees > PITCH_THRESHOLD) command |= (1u << 16);
     // Down
-    if (pitchDegrees < -PITCH_THRESHOLD) command |= (1 << 24);
-    Serial.write((uint8_t*)&command, sizeof(command));
+    if (pitchDegrees < -PITCH_THRESHOLD) command |= (1u << 24);
+    return command;
 }
 
 void loop() {
@@ -209,13 +209,15 @@ void loop() {
                           ",\"quat_z\":" + String(q.z, 4) + "}";
       
       // Update the characteristic value
-      pCharacteristic->setValue(sensorData.c_str());
-      
+      // pCharacteristic->setValue(sensorData.c_str());
       // Notify all connected clients about the new value
-      pCharacteristic->notify();
-      // Send manipulator command
+      // pCharacteristic->notify();
+      // Send manipulator command as BLE characteristic (left,right,up,down bits)
       float yprArray[3] = {ypr[0], ypr[1], ypr[2]};
-      sendManipulatorCommand(yprArray);
+      uint32_t cmd = buildManipulatorCommand(yprArray);
+      // Set the command as 4-byte little-endian value
+      pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
+      pCharacteristic->notify();
       // Print to serial for debugging
       Serial.print("Sending MPU data: ");
       Serial.println(sensorData.c_str());
