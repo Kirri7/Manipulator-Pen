@@ -248,12 +248,12 @@ readc=(char)Serial.read();
         // planner_mtr2.reset();
         planner_mtr2.setTarget(path2[(pointAm/2)+2]);
         Serial.println("up/down");
-        Serial.println("middle");
+        Serial.println("middle:");
         Serial.println((pointAm/2)+2);
       } else if (state_home_0 == 0) {
 
         Serial.println("up/down");
-        Serial.println("count");
+        Serial.println("count:");
         Serial.println(count);
         planner_mtr2.setTarget(path2[count]);
 
@@ -286,13 +286,13 @@ readc=(char)Serial.read();
         state_home_1 = 0;
         // planner_mtr1.reset();
         planner_mtr1.setTarget(path1[count2]);
-                Serial.println("left/right");
-        Serial.println("count2");
+        Serial.println("left/right");
+        Serial.println("count2:");
         Serial.println(count2);
       } else if (state_home_1 == 0) {
         planner_mtr1.setTarget(path1[count2]);
-                Serial.println("left/right");
-        Serial.println("count2");
+        Serial.println("left/right");
+        Serial.println("count2:");
         Serial.println(count2);
 
 
