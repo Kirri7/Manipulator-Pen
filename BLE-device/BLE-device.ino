@@ -141,6 +141,24 @@ void mpu_initialize() {
   }
 }
 
+#define YAW_THRESHOLD     15.0f   // yaw threshold
+#define PITCH_THRESHOLD   15.0f   // pitch threshold
+
+void sendManipulatorCommand(float* ypr) {
+    int32_t command = 0;
+    float yawDegrees = ypr[0] * 180/M_PI;
+    float pitchDegrees = ypr[1] * 180/M_PI;
+    // Right
+    if (yawDegrees > YAW_THRESHOLD) command |= (1 << 0);
+    // Left
+    if (yawDegrees < -YAW_THRESHOLD) command |= (1 << 8);
+    // Up
+    if (pitchDegrees > PITCH_THRESHOLD) command |= (1 << 16);
+    // Down
+    if (pitchDegrees < -PITCH_THRESHOLD) command |= (1 << 24);
+    Serial.write((uint8_t*)&command, sizeof(command));
+}
+
 void loop() {
   // Read MPU6050 data if DMP is ready
   if (dmpReady) {
@@ -195,7 +213,9 @@ void loop() {
       
       // Notify all connected clients about the new value
       pCharacteristic->notify();
-      
+      // Send manipulator command
+      float yprArray[3] = {ypr[0], ypr[1], ypr[2]};
+      sendManipulatorCommand(yprArray);
       // Print to serial for debugging
       Serial.print("Sending MPU data: ");
       Serial.println(sensorData.c_str());
