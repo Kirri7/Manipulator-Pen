@@ -1,6 +1,13 @@
 #include "GyverPlanner.h"
 #include <Arduino.h>
+
+// Выбор режима получения данных:
+// #define USE_WIFI_MODE  - пакеты приходят по WiFi
+// без #define            - пакеты приходят по Serial
+
+#ifdef USE_WIFI_MODE
 #include <WiFi.h>
+#endif
 
 // A2-5
 #define button1Pin 13
@@ -68,12 +75,14 @@ bool Status4 = 0;
 bool state_target = 0;
 bool last_target = 0;
 
+#ifdef USE_WIFI_MODE
 const char* ssid = "xxx";
 const char* password = "xxx";
 
 WiFiServer server(10000);  // server port to listen on
 
 void printWifiStatus();
+#endif
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -111,6 +120,7 @@ void setup() {
   planner_mtr1.setSpeed(0, 500);  //300
 
   // setup Wi-Fi network with SSID and password
+#ifdef USE_WIFI_MODE
   Serial.printf("Connecting to %s\n", ssid);
   Serial.printf("\nattempting to connect to WiFi network SSID '%s' password '%s' \n", ssid, password);
   // attempt to connect to Wifi network:
@@ -125,6 +135,7 @@ void setup() {
   printWifiStatus();
   Serial.println(" listening on port 10000");
   Serial.flush();
+#endif
       planner_mtr2.stop();
       planner_mtr2.reset();
       planner_mtr2.resume();
@@ -145,9 +156,9 @@ void loop() {
   planner_mtr2.tick();
   planner_mtr1.tick();
 
-if (Serial.available()!=0){
-readc=(char)Serial.read();
-}
+// if (Serial.available()!=0){
+// readc=(char)Serial.read();
+// }
 
   state_switch_0 = !digitalRead(LIMSW_X);
   state_switch_1 = !digitalRead(Z_Pin);
@@ -160,12 +171,14 @@ readc=(char)Serial.read();
   Status4 = digitalRead(button4Pin);
 
 
-  static WiFiClient client;
   static int16_t seqExpected = 0;
   bool left;
   bool right;
   bool up;
   bool down;
+
+#ifdef USE_WIFI_MODE
+  static WiFiClient client;
   if (!client) {
       client = server.available();  // Listen for incoming clients
       digitalWrite(LED_BUILTIN, LOW);
@@ -194,6 +207,29 @@ readc=(char)Serial.read();
         while (client.available()) {};  // discard corrupt packet
     }
   }
+#else
+  // Serial mode - read commands from Serial
+  if (Serial.available() > 0) {
+    char cmd = Serial.read();
+    // Ожидаем 4 байта для формирования int32_t
+    static uint8_t serial_buf[4];
+    static uint8_t buf_idx = 0;
+    
+    serial_buf[buf_idx++] = cmd;
+    
+    if (buf_idx == 4) {
+      buf_idx = 0;
+      uint32_t value = ((uint32_t)serial_buf[3] << 24) | 
+                       ((uint32_t)serial_buf[2] << 16) | 
+                       ((uint32_t)serial_buf[1] << 8) | 
+                       ((uint32_t)serial_buf[0]);
+      right = (value & (1 << 0)) != 0;
+      left = (value & (1 << 8)) != 0;
+      up = (value & (1 << 16)) != 0;
+      down = (value & (1 << 24)) != 0;
+    }
+  }
+#endif
 
 /*
   //Обработка концевика 0
@@ -312,6 +348,7 @@ readc=(char)Serial.read();
  }
 }
 
+#ifdef USE_WIFI_MODE
 void printWifiStatus() {
     // print the SSID of the network you're attached to:
     Serial.print("\nSSID: ");
@@ -328,3 +365,4 @@ void printWifiStatus() {
     Serial.print(rssi);
     Serial.println(" dBm");
 }
+#endif
