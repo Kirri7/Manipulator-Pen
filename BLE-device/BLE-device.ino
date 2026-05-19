@@ -141,8 +141,8 @@ void mpu_initialize() {
   }
 }
 
-#define YAW_THRESHOLD     15.0f   // yaw threshold
-#define PITCH_THRESHOLD   15.0f   // pitch threshold
+#define YAW_THRESHOLD     45.0f   // yaw threshold
+#define PITCH_THRESHOLD   45.0f   // pitch threshold
 
 uint32_t buildManipulatorCommand(float* ypr) {
     uint32_t command = 0;
