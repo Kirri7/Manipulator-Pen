@@ -65,30 +65,26 @@ bool BLEManager::connectToServer() {
 
 void BLEManager::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
                     uint8_t* pData, size_t length, bool isNotify) {
-  // TODO
-  // Parse JSON (simplified from original)
-  // Since we can't easily pass 'this', we assume pData contains JSON string
-  String jsonData((char*)pData);
-  int yawIdx = jsonData.indexOf("\"yaw\"");
-  int pitchIdx = jsonData.indexOf("\"pitch\"");
-  
-  if (yawIdx >= 0 && pitchIdx >= 0) {
-    int colonIdx = jsonData.indexOf(':', yawIdx);
-    int commaIdx = jsonData.indexOf(',', colonIdx);
-    String yawStr = jsonData.substring(colonIdx + 1, commaIdx);
-    float yaw = yawStr.toFloat();
+    // TODO unify packet recieving logic for all inputs
+    // The sender sends an int32_t, which is 4 bytes.
+    if (length != sizeof(int32_t)) {
+        // Optional: Log error or ignore invalid packet
+        return;
+    }
+    uint32_t command = 0;
+    memcpy(&command, pData, length);
+    // Bit 0: Right
+    g_Input.right = ((command & (1 << 0)) != 0);
     
-    colonIdx = jsonData.indexOf(':', pitchIdx);
-    commaIdx = jsonData.indexOf(',', colonIdx);
-    String pitchStr = jsonData.substring(colonIdx + 1, commaIdx);
-    float pitch = pitchStr.toFloat();
+    // Bit 8: Left
+    g_Input.left =  ((command & (1 << 8)) != 0);
     
-    const float THRESH = 15.0f;
-    g_Input.right = (yaw > THRESH);
-    g_Input.left  = (yaw < -THRESH);
-    g_Input.up    = (pitch > THRESH);
-    g_Input.down  = (pitch < -THRESH);
-  }
+    // Bit 16: Up
+    g_Input.up =    ((command & (1 << 16)) != 0);
+    
+    // Bit 24: Down
+    g_Input.down =  ((command & (1 << 24)) != 0);
+    // Serial.printf("Cmd: 0x%08X | R:%d L:%d U:%d D:%d\n", command, g_Input.right, g_Input.left, g_Input.up, g_Input.down);
 }
 
 void BLEManager::MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice adv) {
