@@ -65,6 +65,7 @@ bool BLEManager::connectToServer() {
 
 void BLEManager::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
                     uint8_t* pData, size_t length, bool isNotify) {
+  // TODO
   // Parse JSON (simplified from original)
   // Since we can't easily pass 'this', we assume pData contains JSON string
   String jsonData((char*)pData);
