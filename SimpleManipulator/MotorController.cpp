@@ -131,8 +131,7 @@ void processMotorLogic() {
     else {
         planner_mtr2.setTarget(path2[count]);
         
-        Serial.println("up/down");
-        Serial.println("count:");
+        Serial.print("up/down, count:");
         Serial.println(count);
 
         if (btn4 || g_Input.up) {
