@@ -38,7 +38,7 @@ void WiFiManager::update() {
   }
   if (client) {
     if (!alreadyConnected) {
-        client.flush();
+        while(client.available()) client.read();
         alreadyConnected = true;
         digitalWrite(LED_BUILTIN, HIGH);
     }
