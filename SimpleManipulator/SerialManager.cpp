@@ -10,7 +10,7 @@ void SerialManager::update() {
   if (Serial.available() > 0) {
     char cmd = Serial.read();
     serial_buf[buf_idx++] = cmd;
-    
+    // TODO DRY
     if (buf_idx == 4) {
       buf_idx = 0;
       uint32_t value = ((uint32_t)serial_buf[3] << 24) | 

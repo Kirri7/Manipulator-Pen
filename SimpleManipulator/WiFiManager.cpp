@@ -43,6 +43,7 @@ void WiFiManager::update() {
     }
     if (client.available() > 0) {
         //str = client.readStringUntil('\n');  // read entire response
+        // TODO DRY
         int32_t value;
         if (client.available() == sizeof(value)) {
             client.readBytes((char*)&value, sizeof(value));
