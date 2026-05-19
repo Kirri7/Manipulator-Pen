@@ -32,7 +32,9 @@ void WiFiManager::init() {
 }
 
 void WiFiManager::update() {
-  if (!client) {
+  if (!client  || !client.connected())
+  {
+      if (client) client.stop(); // Clean up old connection
       client = server.available();
       digitalWrite(LED_BUILTIN, LOW);
   }
