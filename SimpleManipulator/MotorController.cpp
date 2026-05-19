@@ -112,35 +112,44 @@ void processMotorLogic() {
   bool btn2 = digitalRead(button2Pin); // Left
 
   // Axis 0 (Up/Down - MTR2)
-  if (btn3 or btn4 or g_Input.down or g_Input.up or state_home_0) {
-    // btn1 = 0; btn2 = 0;
-    if (planner_mtr2.ready()) {
-      if (state_home_0 == 1) {
+  bool axis0Active = btn3 || btn4 || g_Input.down || g_Input.up || state_home_0;
+  
+  if (axis0Active && planner_mtr2.ready()) {
+    // INITIAL HOMOING (Runs once at startup)
+    if (state_home_0) { 
         state_home_0 = 0;
-        planner_mtr2.setTarget(path2[(pointAm/2)+2]);
-        Serial.println("up/down");
-        Serial.println("middle:");
+        
+        // Move to a known middle position
+        int startPosition = (pointAm / 2) + 2; 
+        planner_mtr2.setTarget(path2[startPosition]);
+        count = startPosition;
+        
+        Serial.print("Axis 0: HOMED to middle:");
         Serial.println((pointAm/2)+2);
-      } else {
+    } 
+    // NORMAL OPERATION (Manual Control)
+    else {
+        planner_mtr2.setTarget(path2[count]);
+        
         Serial.println("up/down");
         Serial.println("count:");
         Serial.println(count);
-        planner_mtr2.setTarget(path2[count]);
-        
-        if (btn4 == true or g_Input.up) { // maybe down?
+
+        if (btn4 || g_Input.up) {
+          if (count < pointAm - 1) {
+            count += gstep;
+          }
+          // else count = pointAm-1;
           //planner_mtr2.setTarget(path[count+1]);  // загружаем новую точку (начнётся с 0)
-          if (count < pointAm-1) count += gstep;
-          else count = pointAm-1;
         }
-        
-        if (btn3 or g_Input.down) {
-           if (btn3 == true or g_Input.up) {
-             if (count > 3) count -= gstep;
-             else count = 3; //0
-             //planner_mtr2.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
-           }
+
+        if (btn3 || g_Input.down) {
+          if (count > 3) { // 0 слишком близко к опоре
+            count -= gstep;
+          }
+          // else count = 3;
+          //planner_mtr2.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
         }
-      }
     }
   }
 
