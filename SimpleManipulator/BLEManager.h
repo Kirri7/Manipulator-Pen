@@ -18,7 +18,7 @@ private:
   boolean doConnect = false;
   boolean connected = false;
   
-  void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
+  static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
                       uint8_t* pData, size_t length, bool isNotify);
   bool connectToServer();
   
