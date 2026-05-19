@@ -23,7 +23,9 @@ private:
   bool connectToServer();
   
   class MyClientCallback : public BLEClientCallbacks {
-    void onConnect(BLEClient* pclient) { Serial.println("BLE Connected"); }
+    void onConnect(BLEClient* pclient) { 
+        Serial.println("BLE Connected");
+    }
     void onDisconnect(BLEClient* pclient) { 
       connected = false; 
       Serial.println("BLE Disconnected"); 

@@ -50,6 +50,7 @@ bool BLEManager::connectToServer() {
     BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
     if (pRemoteService) {
       pRemoteCharacteristic = pRemoteService->getCharacteristic(CHARACTERISTIC_UUID);
+      // if(pRemoteCharacteristic->canRead())
       if (pRemoteCharacteristic && pRemoteCharacteristic->canNotify()) {
         pRemoteCharacteristic->registerForNotify(BLEManager::notifyCallback);
         connected = true;
@@ -92,6 +93,7 @@ void BLEManager::MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice adv) 
     BLEDevice::getScan()->stop();
     bleManager.myDevice = new BLEAdvertisedDevice(adv);
     bleManager.doConnect = true;
+    // doScan = true;
   }
 }
 
