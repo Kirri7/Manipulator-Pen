@@ -36,6 +36,7 @@ void WiFiManager::update() {
   {
       if (client) client.stop(); // Clean up old connection
       client = server.available();
+      client.setTimeout(0); // Non-blocking read
       digitalWrite(LED_BUILTIN, LOW);
   }
   if (client) {
