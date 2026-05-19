@@ -152,29 +152,37 @@ void processMotorLogic() {
   }
 
   // Axis 1 (Left/Right - MTR1)
-  if (btn1 or btn2 or g_Input.left or g_Input.right or state_home_1) {
-    // btn3 = 0; btn4 = 0;
-    if (planner_mtr1.ready()) {
-      if (state_home_1 == 1) {
-        state_home_1 = 0;
-        planner_mtr1.setTarget(path1[count2]);
-      } else {
-        planner_mtr1.setTarget(path1[count2]);
-        Serial.println("left/right");
-        Serial.println("count2:");
-        Serial.println(count2);
+  bool axis1Active = btn1 || btn2 || g_Input.left || g_Input.right || state_home_1;
+  
+  if (axis1Active && planner_mtr1.ready()) {
+      // INITIAL HOMOING (Runs once at startup)
+      if (state_home_1) {
+        state_home_1 = false;
         
-        if (btn2 == true or g_Input.left) {
-          if (count2 < pointAm) count2 += gstep;
-          else count2 = pointAm;
+        // Move to a known middle position
+        int startPosition = (pointAm / 2) + 2; 
+        planner_mtr2.setTarget(path1[startPosition]);
+        count = startPosition;
+        
+        Serial.print("Axis 0: HOMED to middle:");
+        Serial.println((pointAm/2)+2);
+      } 
+      // NORMAL OPERATION (Manual Control)
+      else {
+        planner_mtr1.setTarget(path1[count2]);
+        
+        if (btn2 || g_Input.left) {
+          if (count2 < pointAm - 1) count2 += gstep;
+          // else count2 = pointAm;
         }
 
-        //возвращает обратно
-        if (btn1 == true or g_Input.right) {
+        //?возвращает обратно
+        if (btn1 || g_Input.right) {
           if (count2 > 4) count2 -= gstep;
-          else count2 = 4;  //0
+          // else count2 = 4;  //0
         }
+        
+        Serial.print("left/right, count2: "); Serial.println(count2);
       }
-    }
   }
 }
