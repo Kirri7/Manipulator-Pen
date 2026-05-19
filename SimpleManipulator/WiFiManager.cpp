@@ -1,4 +1,5 @@
 #include "WiFiManager.h"
+#include "PacketParser.h"
 
 #ifdef USE_WIFI_MODE
 WiFiManager wifiManager;
@@ -43,14 +44,10 @@ void WiFiManager::update() {
     }
     if (client.available() > 0) {
         //str = client.readStringUntil('\n');  // read entire response
-        // TODO DRY
-        int32_t value;
-        if (client.available() == sizeof(value)) {
-            client.readBytes((char*)&value, sizeof(value));
-            g_Input.right = (value & (1 << 0)) != 0;
-            g_Input.left  = (value & (1 << 8)) != 0;
-            g_Input.up    = (value & (1 << 16)) != 0;
-            g_Input.down  = (value & (1 << 24)) != 0;
+        if (client.available() == sizeof(int32_t)) {
+            uint8_t buffer[4];
+            client.readBytes(buffer, 4);
+            PacketParser::parseCommand(buffer, 4);
         } else {
             while (client.available()) {};  // discard corrupt packet
         }

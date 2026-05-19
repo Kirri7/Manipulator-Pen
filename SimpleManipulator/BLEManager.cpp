@@ -1,4 +1,5 @@
 #include "BLEManager.h"
+#include "PacketParser.h"
 
 #ifdef USE_BLE_MODE
 BLEManager bleManager;
@@ -65,25 +66,7 @@ bool BLEManager::connectToServer() {
 
 void BLEManager::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
                     uint8_t* pData, size_t length, bool isNotify) {
-    // TODO unify packet recieving logic for all inputs
-    // The sender sends an int32_t, which is 4 bytes.
-    if (length != sizeof(int32_t)) {
-        // Optional: Log error or ignore invalid packet
-        return;
-    }
-    uint32_t command = 0;
-    memcpy(&command, pData, length);
-    // Bit 0: Right
-    g_Input.right = ((command & (1 << 0)) != 0);
-    
-    // Bit 8: Left
-    g_Input.left =  ((command & (1 << 8)) != 0);
-    
-    // Bit 16: Up
-    g_Input.up =    ((command & (1 << 16)) != 0);
-    
-    // Bit 24: Down
-    g_Input.down =  ((command & (1 << 24)) != 0);
+    PacketParser::parseCommand(pData, length);
     // Serial.printf("Cmd: 0x%08X | R:%d L:%d U:%d D:%d\n", command, g_Input.right, g_Input.left, g_Input.up, g_Input.down);
 }
 
