@@ -117,7 +117,7 @@ void processMotorLogic() {
   if (axis0Active && planner_mtr2.ready()) {
     // INITIAL HOMOING (Runs once at startup)
     if (state_home_0) { 
-        state_home_0 = 0;
+        state_home_0 = false;
         
         // Move to a known middle position
         int startPosition = (pointAm / 2) + 2; 
