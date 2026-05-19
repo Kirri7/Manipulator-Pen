@@ -10,7 +10,6 @@ public:
 private:
   WiFiServer server = WiFiServer(WIFI_PORT);
   WiFiClient client;
-  bool alreadyConnected = false;
 };
 
 extern WiFiManager wifiManager;

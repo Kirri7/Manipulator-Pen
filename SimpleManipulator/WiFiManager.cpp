@@ -32,24 +32,31 @@ void WiFiManager::init() {
 }
 
 void WiFiManager::update() {
-  if (!client  || !client.connected())
+  if (client && client.connected())
   {
-      if (client) client.stop(); // Clean up old connection
-      client = server.available();
-      client.setTimeout(0); // Non-blocking read
-      digitalWrite(LED_BUILTIN, LOW);
-  }
-  if (client) {
-    if (!alreadyConnected) {
-        while(client.available()) client.read();
-        alreadyConnected = true;
-        digitalWrite(LED_BUILTIN, HIGH);
-    }
-    if (client.available() >= sizeof(int32_t) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    
+    if (client.available() >= sizeof(int32_t)) {
         uint8_t buffer[4];
         client.readBytes(buffer, 4);
         PacketParser::parseCommand(buffer, 4);
     }
+    // If available() < 4, we just wait for the next loop. 
+    // No flushing, no blocking.
   }
+  else
+  {
+      if (client) client.stop(); // Clean up old connection
+      // while(client.available()) client.read();
+      digitalWrite(LED_BUILTIN, LOW);
+      WiFiClient newClient = server.available();
+
+      if (newClient.connected()) {
+          client = newClient;
+          client.setTimeout(0); // Set non-blocking for future reads
+          Serial.println("New client connected!");
+      }
+  }
+  // If no new client, do nothing. We wait for next update().
 }
 #endif
