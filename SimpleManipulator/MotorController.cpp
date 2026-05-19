@@ -112,7 +112,7 @@ void processMotorLogic() {
   bool btn2 = digitalRead(button2Pin); // Left
 
   // Axis 0 (Up/Down - MTR2)
-  if (btn4 or g_Input.down or state_home_0) {
+  if (btn3 or btn4 or g_Input.down or g_Input.up or state_home_0) {
     // btn1 = 0; btn2 = 0;
     if (planner_mtr2.ready()) {
       if (state_home_0 == 1) {
@@ -145,7 +145,7 @@ void processMotorLogic() {
   }
 
   // Axis 1 (Left/Right - MTR1)
-  if (btn2 or g_Input.left or state_home_1) {
+  if (btn1 or btn2 or g_Input.left or g_Input.right or state_home_1) {
     // btn3 = 0; btn4 = 0;
     if (planner_mtr1.ready()) {
       if (state_home_1 == 1) {
