@@ -131,9 +131,6 @@ void processMotorLogic() {
     else {
         planner_mtr2.setTarget(path2[count]);
         
-        Serial.print("up/down, count:");
-        Serial.println(count);
-
         if (btn4 || g_Input.up) {
           if (count < pointAm - 1) {
             count += gstep;
@@ -149,6 +146,8 @@ void processMotorLogic() {
           // else count = 3;
           //planner_mtr2.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
         }
+
+        Serial.print("up/down, count:"); Serial.println(count);
     }
   }
 
