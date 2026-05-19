@@ -161,10 +161,10 @@ void processMotorLogic() {
             
             // Move to a known middle position
             int startPosition = (pointAm / 2) + 2; 
-            planner_mtr2.setTarget(path1[startPosition]);
-            count = startPosition;
+            planner_mtr1.setTarget(path1[startPosition]);
+            count2 = startPosition;
             
-            Serial.print("Axis 0: HOMED to middle: ");
+            Serial.print("Axis 1: HOMED to middle: ");
             Serial.println((pointAm/2)+2);
         } 
         // NORMAL OPERATION (Manual Control)
