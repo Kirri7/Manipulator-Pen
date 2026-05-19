@@ -42,15 +42,10 @@ void WiFiManager::update() {
         alreadyConnected = true;
         digitalWrite(LED_BUILTIN, HIGH);
     }
-    if (client.available() > 0) {
-        //str = client.readStringUntil('\n');  // read entire response
-        if (client.available() == sizeof(int32_t)) {
-            uint8_t buffer[4];
-            client.readBytes(buffer, 4);
-            PacketParser::parseCommand(buffer, 4);
-        } else {
-            while (client.available()) {};  // discard corrupt packet
-        }
+    if (client.available() >= sizeof(int32_t) {
+        uint8_t buffer[4];
+        client.readBytes(buffer, 4);
+        PacketParser::parseCommand(buffer, 4);
     }
   }
 }
