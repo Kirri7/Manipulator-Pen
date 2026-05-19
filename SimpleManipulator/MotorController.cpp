@@ -115,6 +115,11 @@ void processMotorLogic() {
     bool axis0Active = btn3 || btn4 || g_Input.down || g_Input.up || state_home_0;
     
     if (axis0Active && planner_mtr2.ready()) {
+        // Serial.print(g_Input.left); 
+        // Serial.print(g_Input.right);
+        // Serial.print(g_Input.up);
+        // Serial.println(g_Input.down);
+        
         // INITIAL HOMOING (Runs once at startup)
         if (state_home_0) { 
             state_home_0 = false;
