@@ -124,7 +124,7 @@ void processMotorLogic() {
         planner_mtr2.setTarget(path2[startPosition]);
         count = startPosition;
         
-        Serial.print("Axis 0: HOMED to middle:");
+        Serial.print("Axis 0: HOMED to middle: ");
         Serial.println((pointAm/2)+2);
     } 
     // NORMAL OPERATION (Manual Control)
@@ -164,7 +164,7 @@ void processMotorLogic() {
         planner_mtr2.setTarget(path1[startPosition]);
         count = startPosition;
         
-        Serial.print("Axis 0: HOMED to middle:");
+        Serial.print("Axis 0: HOMED to middle: ");
         Serial.println((pointAm/2)+2);
       } 
       // NORMAL OPERATION (Manual Control)
