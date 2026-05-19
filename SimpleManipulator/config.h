@@ -32,8 +32,8 @@ inline const char* PASSWORD = "xxx";
 
 // --- BLE SETTINGS ---
 #ifdef USE_BLE_MODE
-const char* SERVICE_UUID = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c";
-const char* CHARACTERISTIC_UUID = "fc18c54c-2f23-4c05-84bd-338ca880b786";
+#define SERVICE_UUID "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
+#define CHARACTERISTIC_UUID "fc18c54c-2f23-4c05-84bd-338ca880b786"
 #endif
 
 // --- PATH DATA ---

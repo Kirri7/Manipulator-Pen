@@ -2,6 +2,8 @@
 
 #ifdef USE_BLE_MODE
 BLEManager bleManager;
+BLEUUID BLEManager::serviceUUID(SERVICE_UUID);
+BLEUUID BLEManager::charUUID(CHARACTERISTIC_UUID);
 BLEManager* BLEManager::MyClientCallback::selfPtr = nullptr;
 BLEManager* BLEManager::MyAdvertisedDeviceCallbacks::selfPtr = nullptr;
 
@@ -47,9 +49,9 @@ bool BLEManager::connectToServer() {
   pClient->setClientCallbacks(new MyClientCallback());
   
   if(pClient->connect(myDevice)) {
-    BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
+    BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService) {
-      pRemoteCharacteristic = pRemoteService->getCharacteristic(CHARACTERISTIC_UUID);
+      pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
       // if(pRemoteCharacteristic->canRead())
       if (pRemoteCharacteristic && pRemoteCharacteristic->canNotify()) {
         pRemoteCharacteristic->registerForNotify(BLEManager::notifyCallback);
@@ -89,7 +91,7 @@ void BLEManager::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristi
 }
 
 void BLEManager::MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice adv) {
-  if (adv.haveServiceUUID() && adv.isAdvertisingService(SERVICE_UUID)) {
+  if (adv.haveServiceUUID() && adv.isAdvertisingService(serviceUUID)) {
     BLEDevice::getScan()->stop();
     bleManager.myDevice = new BLEAdvertisedDevice(adv);
     bleManager.doConnect = true;

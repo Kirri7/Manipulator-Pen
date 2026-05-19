@@ -10,6 +10,8 @@ class BLEManager {
 public:
   void init();
   void update();
+  static BLEUUID serviceUUID;
+  static BLEUUID charUUID;
   // Expose callback registration for external use if needed, but internal here
 private:
   BLEClient* pClient;
