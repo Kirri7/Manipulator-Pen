@@ -78,7 +78,7 @@ bool connectToServer()
   /* Initial value is 'Hello, World!' */
   if(pRemoteCharacteristic->canRead())
   {
-    std::string value = pRemoteCharacteristic->readValue();
+    String value = pRemoteCharacteristic->readValue();
     Serial.print("The characteristic value was: ");
     Serial.println(value.c_str());
   }
