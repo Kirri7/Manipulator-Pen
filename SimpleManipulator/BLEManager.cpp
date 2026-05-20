@@ -86,7 +86,7 @@ void BLEManager::MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice adv) 
         return;
     }
     BLEDevice::getScan()->stop();
-    bleManager.myDevice = new BLEAdvertisedDevice(adv);
+    bleManager.myDevice = new BLEAdvertisedDevice(adv); // TODO think about delete
     bleManager.doConnect = true;
     // doScan = true;
   }
