@@ -1,5 +1,6 @@
 #include "BLEManager.h"
 #include "PacketParser.h"
+// TODO make code review
 
 #ifdef USE_BLE_MODE
 BLEManager bleManager;
