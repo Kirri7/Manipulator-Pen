@@ -10,14 +10,18 @@ class BLEManager {
 public:
   void init();
   void update();
-  static BLEUUID serviceUUID;
-  static BLEUUID charUUID;
+  static BLEUUID remoteSUUID;
+  static BLEUUID remoteCUUID;
+  static BLEUUID computerSUUID;
+  static BLEUUID computerCUUID;
 private:
   BLEClient* pClient;
   BLERemoteCharacteristic* pRemoteCharacteristic;
   BLEAdvertisedDevice* myDevice;
   boolean doConnect = false;
   boolean connected = false;
+  BLEUUID* currentServiceUUID = &computerSUUID;
+  BLEUUID* currentCharUUID = &computerCUUID;
   
   static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
                       uint8_t* pData, size_t length, bool isNotify);

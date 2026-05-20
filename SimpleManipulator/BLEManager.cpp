@@ -3,8 +3,10 @@
 
 #ifdef USE_BLE_MODE
 BLEManager bleManager;
-BLEUUID BLEManager::serviceUUID(SERVICE_UUID);
-BLEUUID BLEManager::charUUID(CHARACTERISTIC_UUID);
+BLEUUID BLEManager::remoteSUUID(REMOTE_SERVICE_UUID);
+BLEUUID BLEManager::remoteCUUID(REMOTE_CHARACTERISTIC_UUID);
+BLEUUID BLEManager::computerSUUID(COMPUTER_SERVICE_UUID);
+BLEUUID BLEManager::computerCUUID(COMPUTER_CHARACTERISTIC_UUID);
 BLEManager* BLEManager::MyClientCallback::selfPtr = nullptr;
 BLEManager* BLEManager::MyAdvertisedDeviceCallbacks::selfPtr = nullptr;
 
@@ -44,15 +46,16 @@ void BLEManager::update() {
 }
 
 bool BLEManager::connectToServer() {
-  if (myDevice == nullptr) return false;
+  // подключение к нужному устройству из списка
+  if (!myDevice || !currentServiceUUID || !currentCharUUID) return false;
   
   pClient = BLEDevice::createClient();
   pClient->setClientCallbacks(new MyClientCallback());
   
   if(pClient->connect(myDevice)) {
-    BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
+    BLERemoteService* pRemoteService = pClient->getService(*currentServiceUUID);
     if (pRemoteService) {
-      pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+      pRemoteCharacteristic = pRemoteService->getCharacteristic(*currentCharUUID);
       // if(pRemoteCharacteristic->canRead())
       if (pRemoteCharacteristic && pRemoteCharacteristic->canNotify()) {
         pRemoteCharacteristic->registerForNotify(BLEManager::notifyCallback);
@@ -71,7 +74,17 @@ void BLEManager::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristi
 }
 
 void BLEManager::MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice adv) {
-  if (adv.haveServiceUUID() && adv.isAdvertisingService(serviceUUID)) {
+  // Скаинирование каждого нового устройства в надежде найти нужное
+  if (adv.haveServiceUUID()) {
+    if (adv.isAdvertisingService(computerSUUID)) {
+        bleManager.currentServiceUUID = &computerSUUID;
+        bleManager.currentCharUUID = &computerCUUID;
+    } else if (adv.isAdvertisingService(remoteSUUID)) {
+        bleManager.currentServiceUUID = &remoteSUUID;
+        bleManager.currentCharUUID = &remoteCUUID;
+    } else {
+        return;
+    }
     BLEDevice::getScan()->stop();
     bleManager.myDevice = new BLEAdvertisedDevice(adv);
     bleManager.doConnect = true;

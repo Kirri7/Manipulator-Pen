@@ -31,8 +31,10 @@ inline const char* PASSWORD = "xxx";
 
 // --- BLE SETTINGS ---
 #ifdef USE_BLE_MODE
-#define SERVICE_UUID "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
-#define CHARACTERISTIC_UUID "fc18c54c-2f23-4c05-84bd-338ca880b786"
+#define REMOTE_SERVICE_UUID "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
+#define REMOTE_CHARACTERISTIC_UUID "fc18c54c-2f23-4c05-84bd-338ca880b786"
+#define COMPUTER_SERVICE_UUID "47bb7aa5-0e12-487f-a3ab-9dcdbc688f00"
+#define COMPUTER_CHARACTERISTIC_UUID "a57e4837-5a46-4dc7-a0f5-d0e68ec5212c"
 #endif
 
 // --- PATH DATA ---
