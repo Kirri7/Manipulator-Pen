@@ -38,7 +38,7 @@ private:
 
   class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice);
-    static BLEManager* selfPtr;
+    static BLEManager* selfPtr; // TODO think about bleManager.code...
     friend class BLEManager;
   };
 };
