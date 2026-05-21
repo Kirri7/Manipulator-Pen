@@ -191,30 +191,49 @@ class BLEGateway:
 
     # ---------- Client (ESP32) ----------
     async def _find_esp32(self) -> Optional[BLEDevice]:
-        """Сканирование с фильтрацией по имени"""
-        logger.debug(f"Scanning for {self.config.ESP32_NAME}...")
+        """Сканирование с частичным совпадением имени"""
+        logger.debug(f"🔍 Scanning for '{self.config.ESP32_NAME}'...")
         
         try:
-            # Используем фильтр по имени для экономии ресурсов
-            devices = await BleakScanner.discover(
+            # ⚠️ ВАЖНО: return_adv=True для доступа к advertising data
+            discovered = await BleakScanner.discover(
                 timeout=self.config.SCAN_TIMEOUT,
                 return_adv=True
             )
             
-            for device in devices:
-                if device.name == self.config.ESP32_NAME:
-                    logger.info(f"Found ESP32: {device.address} (RSSI: {device.rssi})")
-                    return device
+            self._last_found_devices = []
+            target_device = None
             
-            logger.warning(f"Device {self.config.ESP32_NAME} not found")
-            return None
-
-        except KeyError:  # TODO баг в bleak/backends/bluezdbus
-            logger.debug("BlueZ ghost device error, retrying...")
-            return None
-
+            logger.info(f"📡 Found {len(discovered)} device(s):")
+            
+            for address, (device, adv_data) in discovered.items():
+                name = device.name or "Unknown"
+                rssi = adv_data.rssi if adv_data else "N/A"
+                
+                self._last_found_devices.append({
+                    'address': address,
+                    'name': name,
+                    'rssi': rssi
+                })
+                
+                logger.info(f"   {address} - {name} ({rssi} dBm)")
+                
+                # ⚠️ Частичное совпадение (case-insensitive)
+                if self.config.ESP32_NAME.lower() in name.lower():
+                    logger.info(f"   ⭐ MATCHES TARGET: {name}")
+                    target_device = device
+                    self._found_address = address
+                    break
+            
+            if target_device:
+                logger.info(f"✅ Found ESP32 at address: {target_device.address}")
+            else:
+                logger.warning(f"⚠️ Device '{self.config.ESP32_NAME}' not found in {len(discovered)} devices")
+                
+            return target_device
+            
         except Exception as e:
-            logger.error(f"Scan failed: {e}")
+            logger.error(f"❌ Scan failed: {e}")
             return None
 
     def _notification_handler(self, sender: str, data: bytearray):
