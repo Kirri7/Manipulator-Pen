@@ -289,7 +289,7 @@ class BLEGateway:
             
             try:
                 # Проверяем сервисы
-                services = await client.get_services()
+                services = client.services
                 target_char = None
                 
                 for service in services:
