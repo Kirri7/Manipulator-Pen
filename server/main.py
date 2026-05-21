@@ -238,6 +238,15 @@ class BLEGateway:
 
     def _notification_handler(self, sender: str, data: bytearray):
         """Обработчик уведомлений от ESP32 (вызывается в отдельном треде)"""
+        # Логируем полученные данные сразу
+        logger.info(f"📥 Received from ESP32: {data.hex()} (length: {len(data)} bytes)")
+        
+        # Если хотим видеть в виде строки (если данные текстовые):
+        try:
+            logger.info(f"📥 Received text: {data.decode('utf-8')}")
+        except:
+            logger.info(f"📥 Received hex: {data.hex()}")
+        
         # Передаем в основной цикл событий
         asyncio.create_task(self._handle_incoming_data(data))
 
