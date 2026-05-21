@@ -371,6 +371,7 @@ class BLEGateway:
         self.running = True
         
         # Регистрация обработчиков сигналов
+        self._loop = asyncio.get_running_loop()
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, lambda: asyncio.create_task(self.shutdown()))
