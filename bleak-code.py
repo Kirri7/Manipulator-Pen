@@ -11,7 +11,7 @@ from bleak import BleakClient, BleakScanner
 # UUIDs from your Arduino BLE device
 SERVICE_UUID = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
 CHARACTERISTIC_UUID = "fc18c54c-2f23-4c05-84bd-338ca880b786"
-TARGET_NAME = "ESP32-Sensor-Device"
+TARGET_NAME = "ESP32-MPU6050-BLE"
 
 
 async def scan_for_devices(timeout: int = 10):
