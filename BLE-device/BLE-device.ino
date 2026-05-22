@@ -1,6 +1,7 @@
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
+#include <cstdint>
 
 // I2Cdev and MPU6050 libraries
 #include "I2Cdev.h"
@@ -225,6 +226,7 @@ void loop() {
     }
   } else {
     // If DMP is not ready, send error status
+    // TODO think about it
     String errorData = "{\"error\":\"MPU6050 not ready\"}";
     pCharacteristic->setValue(errorData.c_str());
     pCharacteristic->notify();
