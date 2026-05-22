@@ -14,12 +14,12 @@ from bless import (
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(name=__name__)
 
-# Synchronization method based on platform
+# Synchronization logic
+trigger: Union[asyncio.Event, threading.Event]
 if sys.platform in ["darwin", "win32"]:
     trigger = threading.Event()
 else:
-    # Note: In a purely async environment, we'll use an asyncio.Event 
-    # inside the run function instead of this global check for better stability
+    # We will initialize this inside the async run function to ensure it's tied to the loop
     trigger = None 
 
 def read_request(characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
@@ -31,21 +31,26 @@ def write_request(characteristic: BlessGATTCharacteristic, value: Any, **kwargs)
     logger.debug(f"Char value set to {characteristic.value}")
     if characteristic.value == b"\x0f":
         logger.debug("NICE")
-        # Check if we are using threading or asyncio trigger
+        # Use the global trigger
+        global trigger
         if isinstance(trigger, threading.Event):
             trigger.set()
-        elif trigger is not None:
+        elif isinstance(trigger, asyncio.Event):
+            # Since write_request is a callback, we must use call_soon_threadsafe 
+            # if it's called from a different thread, but Bless usually runs in the loop.
             trigger.set()
 
 async def run():
-    # Create the event for this specific loop
-    async_trigger = asyncio.Event()
-    
-    # Global trigger fallback for the write_request function
     global trigger
-    trigger = async_trigger
+    
+    # Initialize the asyncio trigger correctly within the running loop
+    if sys.platform not in ["darwin", "win32"]:
+        trigger = asyncio.Event()
+    else:
+        trigger = threading.Event()
 
-    # Instantiate the server
+    trigger.clear()
+    
     my_service_name = "Test Service"
     # In modern bless, passing the loop explicitly is often unnecessary 
     # as it picks up the running loop
@@ -70,20 +75,14 @@ async def run():
     )
 
     await server.start()
-    logger.info(f"Advertising. Write '0x0F' to: {my_char_uuid}")
-    
-    # Wait for the write request
-    await async_trigger.wait()
+    logger.info("Сервер запущен и готов к работе вечно...")
 
-    await asyncio.sleep(2)
-    logger.debug("Updating characteristic value...")
-    
-    # CORRECTED: update_value takes (characteristic_uuid, value)
-    # Your previous code passed the service_uuid by mistake
-    server.update_value(my_char_uuid, b"\x01") 
-    
-    await asyncio.sleep(5)
-    await server.stop()
+    try:
+        # Просто держим цикл запущенным, пока не прервут программу
+        while True:
+            await asyncio.sleep(3600) 
+    except asyncio.CancelledError:
+        await server.stop()
 
 if __name__ == "__main__":
     try:
