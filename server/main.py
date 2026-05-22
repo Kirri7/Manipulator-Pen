@@ -1,22 +1,11 @@
-#!/usr/bin/env python3
-"""
-BLE Gateway: Принимает данные с ESP32 (пульт) и транслирует их манипулятору.
-Требует: pip install bleak bless
-На Linux: sudo setcap cap_net_raw+ep /usr/bin/python3 или запуск от root
-"""
-
 import asyncio
+import inspect
 import logging
-import signal
 import sys
 import threading
-from typing import Any, Optional, Union, Dict
-from dataclasses import dataclass
-from datetime import datetime
+from typing import Any, Optional
 
-from bleak import BleakClient, BleakScanner, BLEDevice
-from bleak.exc import BleakError
-
+from bleak import BleakScanner, BleakClient
 from bless import (
     BlessServer,
     BlessGATTCharacteristic,
@@ -24,425 +13,191 @@ from bless import (
     GATTAttributePermissions,
 )
 
-# ==================== Configuration ====================
-@dataclass
-class Config:
-    # ESP32 (пульт) - входящие данные
-    ESP32_NAME: str = "ESP32-MPU6050-BLE"
-    ESP32_SERVICE_UUID: str = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
-    ESP32_CHAR_UUID: str = "fc18c54c-2f23-4c05-84bd-338ca880b786"
-    
-    # Манипулятор - исходящие данные
-    GATEWAY_NAME: str = "BLE-Gateway"
-    OUTPUT_SERVICE_UUID: str = "6938e8b6-77d8-44e4-ab9d-d27918908cb8"  # Можно тот же сервис
-    OUTPUT_CHAR_UUID: str = "e869108c-f2db-4772-a6ba-380a0761ef24"    # Другая характеристика
-    
-    # Таймауты
-    SCAN_TIMEOUT: float = 10.0
-    RECONNECT_DELAY: float = 5.0
-    NOTIFICATION_TIMEOUT: float = 30.0
+# =============================================================================
+# Конфигурация
+# =============================================================================
 
-# ==================== Logging ====================
+# --- Устройство-источник (ESP32 пульт) ---
+TARGET_NAME = "ESP32-MPU6050-BLE"
+REMOTE_SERVICE_UUID = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
+REMOTE_CHAR_UUID = "fc18c54c-2f23-4c05-84bd-338ca880b786"
+
+# --- Наше устройство-приёмник (к нему подключается манипулятор) ---
+LOCAL_NAME = "BLE-Gateway"
+LOCAL_SERVICE_UUID = "6938e8b6-77d8-44e4-ab9d-d27918908cb8"  # любой другой UUID
+LOCAL_CHAR_UUID = "e869108c-f2db-4772-a6ba-380a0761ef24"
+
+# =============================================================================
+# Logging
+# =============================================================================
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('ble_gateway.log')
-    ]
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# ==================== Data Processor ====================
-class DataProcessor:
-    """
-    Обработчик данных между ESP32 и манипулятором.
-    Здесь реализуется бизнес-логика преобразования данных.
-    """
-    
-    @staticmethod
-    def process(raw_data: bytearray) -> bytearray:
-        """
-        Обработка сырых данных от ESP32.
-        
-        Args:
-            raw_data: Данные от пульта
-            
-        Returns:
-            Обработанные данные для манипулятора
-        """
-        try:
-            # Пример: парсинг как строки
-            # text = raw_data.decode('utf-8')
-            
-            # Пример: добавление timestamp
-            timestamp = datetime.now().isoformat().encode()
-            processed = bytearray(raw_data) + b'|' + timestamp
-            
-            logger.debug(f"Processed {len(raw_data)} bytes -> {len(processed)} bytes")
-            return processed
-            
-        except Exception as e:
-            logger.error(f"Processing error: {e}")
-            # В случае ошибки возвращаем исходные данные
-            return raw_data
+# =============================================================================
+# Основной класс
+# =============================================================================
 
-# ==================== BLE Gateway ====================
 class BLEGateway:
-    def __init__(self, config: Config):
-        self.config = config
-        self.running = False
-        self.bless_server: Optional[BlessServer] = None
-        self.bleak_client: Optional[BleakClient] = None
-        self.processor = DataProcessor()
-        
-        # Текущее значение для манипулятора
-        self._current_value: bytearray = bytearray(b'INIT')
-        self._value_lock = asyncio.Lock()
-        
-        # Очередь для данных от ESP32
-        self._data_queue: asyncio.Queue[bytearray] = asyncio.Queue(maxsize=100)
-        
-        # События управления
-        self._shutdown_event = asyncio.Event()
-        self._server_started = asyncio.Event()
-        
-        # Платформенно-зависимый trigger для bless
-        if sys.platform in ["darwin", "win32"]:
-            self._bless_trigger: Union[asyncio.Event, threading.Event] = threading.Event()
-        else:
-            self._bless_trigger = asyncio.Event()
-        # self._loop = asyncio.get_event_loop() if sys.platform != "win32" else None
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+    def __init__(self):
+        # Защита данных, т.к. bless на Win32/macOS дергает read_request из другого потока
+        self._data_lock = threading.Lock()
+        self._latest_data: bytearray = bytearray(b"NO_DATA")
 
-    # ---------- Server (Manipulator) ----------
+        self._server: Optional[BlessServer] = None
+        self._running = True
+
+    # -------------------------------------------------------------------------
+    # Bless Server — манипулятор подключается к нам
+    # -------------------------------------------------------------------------
     def _read_request(self, characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
-        """Callback на чтение характеристики манипулятором"""
-        logger.debug(f"Read request from manipulator: {self._current_value.hex()}")
-        return self._current_value
+        """Отдаём текущий обработанный пакет манипулятору."""
+        with self._data_lock:
+            payload = bytearray(self._latest_data)
+        logger.debug("Server READ %s -> %s", characteristic.uuid, payload.hex())
+        return payload
 
     def _write_request(self, characteristic: BlessGATTCharacteristic, value: Any, **kwargs):
-        """Callback на запись от манипулятора (если нужен двусторонний обмен)"""
-        logger.info(f"Write from manipulator: {value}")
-        # Здесь можно обработать команды от манипулятора к ESP32
+        """Если манипулятор что-то напишет — просто логируем."""
+        logger.debug("Server WRITE %s <- %s", characteristic.uuid, value)
+        characteristic.value = value
 
     async def _start_server(self):
-        """Запуск BLE Peripheral для подключения манипулятора"""
-        logger.info(f"Starting BLE Server: {self.config.GATEWAY_NAME}")
-        
-        try:
-            server = BlessServer(
-                name=self.config.GATEWAY_NAME,
-                loop=asyncio.get_running_loop()
-            )
-            server.read_request_func = self._read_request
-            server.write_request_func = self._write_request
-            
-            self.bless_server = server
-            
-            # Добавляем сервис
-            await server.add_new_service(self.config.OUTPUT_SERVICE_UUID)
-            
-            # Характеристика: Read + Notify для манипулятора
-            char_flags = (
-                GATTCharacteristicProperties.read |
-                GATTCharacteristicProperties.notify
-            )
-            permissions = GATTAttributePermissions.readable
-            
-            await server.add_new_characteristic(
-                self.config.OUTPUT_SERVICE_UUID,
-                self.config.OUTPUT_CHAR_UUID,
-                char_flags,
-                self._current_value,
-                permissions
-            )
-            
-            await server.start()
-            logger.info(f"Server advertising. Waiting for manipulator...")
-            logger.info(f"Service UUID: {self.config.OUTPUT_SERVICE_UUID}")
-            logger.info(f"Char UUID: {self.config.OUTPUT_CHAR_UUID}")
-            
-            self._server_started.set()
-            
-            # Держим сервер запущенным
-            await self._shutdown_event.wait()
-            
-        except Exception as e:
-            logger.error(f"Server error: {e}", exc_info=True)
-            raise
-        finally:
-            if self.bless_server:
-                await self.bless_server.stop()
+        logger.info("Запускаем локальный GATT сервер для манипулятора...")
+        self._server = BlessServer(name=LOCAL_NAME)
+        self._server.read_request_func = self._read_request
+        self._server.write_request_func = self._write_request
 
-    async def _update_output_value(self, data: bytearray):
-        """Обновление значения для манипулятора с уведомлением"""
-        async with self._value_lock:
-            self._current_value = data
-            
-            if self.bless_server:
-                try:
-                    # Обновляем значение и отправляем notification подписчикам
-                    self.bless_server.update_value(
-                        self.config.OUTPUT_SERVICE_UUID,
-                        self.config.OUTPUT_CHAR_UUID
-                    )
-                    logger.debug(f"Notified manipulator: {data.hex()[:20]}...")
-                except Exception as e:
-                    logger.error(f"Failed to update characteristic: {e}")
+        await self._server.add_new_service(LOCAL_SERVICE_UUID)
 
-    # ---------- Client (ESP32) ----------
-    async def _find_esp32(self) -> Optional[BLEDevice]:
-        """Сканирование с частичным совпадением имени"""
-        logger.debug(f"🔍 Scanning for '{self.config.ESP32_NAME}'...")
-        
-        try:
-            # ⚠️ ВАЖНО: return_adv=True для доступа к advertising data
-            discovered = await BleakScanner.discover(
-                timeout=self.config.SCAN_TIMEOUT,
-                return_adv=True
-            )
-            
-            self._last_found_devices = []
-            target_device = None
-            
-            logger.info(f"📡 Found {len(discovered)} device(s):")
-            
-            for address, (device, adv_data) in discovered.items():
-                name = device.name or "Unknown"
-                rssi = adv_data.rssi if adv_data else "N/A"
-                
-                self._last_found_devices.append({
-                    'address': address,
-                    'name': name,
-                    'rssi': rssi
-                })
-                
-                logger.info(f"   {address} - {name} ({rssi} dBm)")
-                
-                # ⚠️ Частичное совпадение (case-insensitive)
-                if self.config.ESP32_NAME.lower() in name.lower():
-                    logger.info(f"   ⭐ MATCHES TARGET: {name}")
-                    target_device = device
-                    self._found_address = address
-                    break
-            
-            if target_device:
-                logger.info(f"✅ Found ESP32 at address: {target_device.address}")
-            else:
-                logger.warning(f"⚠️ Device '{self.config.ESP32_NAME}' not found in {len(discovered)} devices")
-                
-            return target_device
-            
-        except Exception as e:
-            logger.error(f"❌ Scan failed: {e}")
-            return None
+        flags = (
+            GATTCharacteristicProperties.read
+            | GATTCharacteristicProperties.notify   # позволяем манипулятору подписаться
+        )
+        permissions = GATTAttributePermissions.readable
 
-    def _notification_handler(self, sender: str, data: bytearray):
-        """Обработчик уведомлений от ESP32 (вызывается в отдельном треде)"""
-        # Логируем полученные данные сразу
-        logger.info(f"📥 Received from ESP32: {data.hex()} (length: {len(data)} bytes)")
-        
-        # Если хотим видеть в виде строки (если данные текстовые):
-        try:
-            logger.info(f"📥 Received text: {data.decode('utf-8')}")
-        except:
-            logger.info(f"📥 Received hex: {data.hex()}")
-        
-        # Передаем в основной цикл событий
-        asyncio.create_task(self._handle_incoming_data(data))
+        await self._server.add_new_characteristic(
+            LOCAL_SERVICE_UUID,
+            LOCAL_CHAR_UUID,
+            flags,
+            self._latest_data,
+            permissions,
+        )
+        await self._server.start()
+        logger.info("Сервер активен. Манипулятор может подключаться.")
 
-    async def _handle_incoming_data(self, data: bytearray):
-        """Помещение данных в очередь обработки"""
-        try:
-            # Неблокирующее добавление с отбрасыванием старых данных при переполнении
-            if self._data_queue.full():
-                old = self._data_queue.get_nowait()
-                logger.warning("Queue full, dropped old data")
-            
-            await self._data_queue.put(data)
-            logger.debug(f"Queued data from ESP32: {data.hex()[:30]}...")
-            
-        except Exception as e:
-            logger.error(f"Queue error: {e}")
+    async def _push_to_manipulator(self, data: bytearray):
+        """Обновляем кеш и рассылаем подписчикам (notify)."""
+        with self._data_lock:
+            self._latest_data = data
 
-    async def _esp32_client_loop(self):
-        """Основной цикл подключения к ESP32 с автопереподключением"""
-        retry_delay = self.config.RECONNECT_DELAY
-        
-        while self.running:
-            try:
-                device = await self._find_esp32()
-                
-                if not device:
-                    logger.info(f"Retrying in {retry_delay}s...")
-                    await asyncio.sleep(retry_delay)
-                    continue
-                
-                await self._connect_and_listen(device)
-                # Если дошли сюда, значит disconnect, сбрасываем задержку
-                retry_delay = self.config.RECONNECT_DELAY
-                
-            except Exception as e:
-                logger.error(f"Client loop error: {e}")
-                await asyncio.sleep(retry_delay)
-                # Exponential backoff
-                retry_delay = min(retry_delay * 2, 60)
-
-    async def _connect_and_listen(self, device: BLEDevice):
-        """Подключение и прослушивание характеристики ESP32"""
-        async with BleakClient(device, timeout=20.0) as client:
-            self.bleak_client = client
-            logger.info(f"Connected to ESP32 {device.address}")
-            
-            if not client.is_connected:
-                return
-            
-            try:
-                # Проверяем сервисы
-                services = client.services
-                target_char = None
-                
-                for service in services:
-                    if service.uuid.lower() == self.config.ESP32_SERVICE_UUID.lower():
-                        for char in service.characteristics:
-                            if char.uuid.lower() == self.config.ESP32_CHAR_UUID.lower():
-                                target_char = char
-                                break
-                
-                if not target_char:
-                    logger.error("Target characteristic not found on ESP32")
-                    return
-                
-                # Подписываемся на уведомления если поддерживаются
-                if "notify" in target_char.properties:
-                    await client.start_notify(
-                        self.config.ESP32_CHAR_UUID,
-                        self._notification_handler
-                    )
-                    logger.info("Subscribed to ESP32 notifications")
-                    
-                    # Ждем пока соединение активно
-                    while client.is_connected and self.running:
-                        await asyncio.sleep(1)
-                        
-                    await client.stop_notify(self.config.ESP32_CHAR_UUID)
-                    
-                else:
-                    # Polling mode
-                    logger.info("Using polling mode")
-                    while client.is_connected and self.running:
-                        data = await client.read_gatt_char(self.config.ESP32_CHAR_UUID)
-                        await self._handle_incoming_data(data)
-                        await asyncio.sleep(0.1)
-                        
-            except BleakError as e:
-                logger.error(f"BLE communication error: {e}")
-            finally:
-                logger.info("Disconnected from ESP32")
-
-    # ---------- Processing ----------
-    async def _processing_loop(self):
-        """Цикл обработки данных из очереди"""
-        logger.info("Processing loop started")
-        
-        while self.running:
-            try:
-                # Ждем данные с таймаутом для проверки флага running
-                data = await asyncio.wait_for(
-                    self._data_queue.get(),
-                    timeout=1.0
-                )
-                
-                # Обработка
-                processed = self.processor.process(data)
-                
-                # Обновление сервера (после того как он стартанул)
-                await self._server_started.wait()
-                await self._update_output_value(processed)
-                
-            except asyncio.TimeoutError:
-                continue
-            except Exception as e:
-                logger.error(f"Processing error: {e}", exc_info=True)
-
-    # ---------- Lifecycle ----------
-    async def start(self):
-        """Запуск всех компонентов"""
-        logger.info("=== BLE Gateway Starting ===")
-        self.running = True
-        
-        # Регистрация обработчиков сигналов
-        self._loop = asyncio.get_running_loop()
-        loop = asyncio.get_running_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, lambda: asyncio.create_task(self.shutdown()))
-        
-        try:
-            # Запускаем сервер, клиент и обработчик параллельно
-            await asyncio.gather(
-                self._start_server(),
-                self._esp32_client_loop(),
-                self._processing_loop(),
-                return_exceptions=True
-            )
-        except asyncio.CancelledError:
-            logger.info("Main tasks cancelled")
-        finally:
-            await self.shutdown()
-
-    async def shutdown(self):
-        """Graceful shutdown"""
-        if not self.running:
+        if self._server is None:
             return
-            
-        logger.info("Initiating shutdown...")
-        self.running = False
-        self._shutdown_event.set()
-        
-        # Закрываем клиентское соединение
-        if self.bleak_client and self.bleak_client.is_connected:
-            try:
-                await self.bleak_client.disconnect()
-                logger.info("BLE client disconnected")
-            except Exception as e:
-                logger.error(f"Error disconnecting client: {e}")
-        
-        # Останавливаем сервер
-        if self.bless_server:
-            try:
-                await self.bless_server.stop()
-                logger.info("BLE server stopped")
-            except Exception as e:
-                logger.error(f"Error stopping server: {e}")
-        
-        # Очищаем очередь
-        while not self._data_queue.empty():
-            try:
-                self._data_queue.get_nowait()
-            except asyncio.QueueEmpty:
-                break
-        
-        logger.info("Shutdown complete")
 
-# ==================== Main ====================
+        try:
+            # На Linux (BlueZ) этот метод — корутина, на Win/mac может быть обычной функцией.
+            char = self._server.get_characteristic(LOCAL_CHAR_UUID)
+            if char is None:
+                logger.error("Характеристика не найдена")
+                return
+
+            char.value = data
+
+            result = self._server.update_value(LOCAL_SERVICE_UUID, LOCAL_CHAR_UUID)
+            if inspect.isawaitable(result):
+                await result
+            
+            logger.debug("Манипулятор успешно уведомлен")
+        except Exception as exc:
+            logger.warning("Не удалось уведомить манипулятора: %s", exc)
+
+    # -------------------------------------------------------------------------
+    # Bleak Client — мы подключаемся к ESP32 пульту
+    # -------------------------------------------------------------------------
+    def _on_remote_notification(self, sender: int, data: bytearray):
+        """Каждый раз, когда ESP32 шлёт уведомление — отрабатывает здесь."""
+        logger.info("Данные от пульта [%s]: %s (hex: %s)", sender, data, data.hex())
+
+        # --- Здесь ваша бизнес-логика ---
+        processed = self._process(data)
+
+        # Передаём в серверную часть без блокировки bleak-колбека
+        asyncio.create_task(self._push_to_manipulator(processed))
+
+    @staticmethod
+    def _process(raw: bytearray) -> bytearray:
+        """
+        Заглушка обработки.
+        Сейчас просто заворачиваем байты в маленький кадр: [0xAA][LEN][RAW...]
+        """
+        frame = bytearray([0xAA, len(raw)]) + raw
+        return frame
+
+    async def _client_loop(self):
+        """Бесконечный цикл: сканировать -> подключиться -> принимать -> реконнект."""
+        while self._running:
+            try:
+                logger.info("Сканирую эфир в поисках '%s'...", TARGET_NAME)
+                device = await BleakScanner.find_device_by_filter(
+                    lambda d, ad: d.name == TARGET_NAME,
+                    timeout=15.0,
+                )
+
+                if device is None:
+                    logger.warning("Пульт не найден. Повтор через 5 сек...")
+                    await asyncio.sleep(5)
+                    continue
+
+                logger.info("Найдено устройство: %s @ %s", device.name, device.address)
+                disconnected_event = asyncio.Event()
+
+                def on_disconnect(client: BleakClient):
+                    logger.warning("Связь с пультом потеряна.")
+                    disconnected_event.set()
+
+                async with BleakClient(device, disconnected_callback=on_disconnect) as client:
+                    logger.info("Подключено к пульту.")
+                    await client.start_notify(REMOTE_CHAR_UUID, self._on_remote_notification)
+                    logger.info("Подписка на характеристику оформлена. Ожидаю данные...")
+
+                    # Спим, пока соединение живо
+                    await disconnected_event.wait()
+
+            except Exception as exc:
+                logger.error("Ошибка клиента: %s", exc, exc_info=True)
+                await asyncio.sleep(5)
+
+    # -------------------------------------------------------------------------
+    # Жизненный цикл приложения
+    # -------------------------------------------------------------------------
+    async def _keepalive(self):
+        """Удерживает event loop от завершения."""
+        while self._running:
+            await asyncio.sleep(3600)
+
+    async def run(self):
+        await self._start_server()
+
+        try:
+            # Крутим и сервер, и клиента одновременно
+            await asyncio.gather(self._client_loop(), self._keepalive())
+        except asyncio.CancelledError:
+            logger.info("Получен сигнал остановки...")
+        finally:
+            self._running = False
+            if self._server:
+                await self._server.stop()
+            logger.info("Выключение завершено.")
+
 def main():
-    config = Config()
-    
-    # Можно переопределить через переменные окружения
-    if 'ESP32_NAME' in os.environ:
-        config.ESP32_NAME = os.environ['ESP32_NAME']
-    
-    gateway = BLEGateway(config)
-    
+    gateway = BLEGateway()
     try:
-        asyncio.run(gateway.start())
+        asyncio.run(gateway.run())
     except KeyboardInterrupt:
-        logger.info("Interrupted by user")
-    except Exception as e:
-        logger.critical(f"Fatal error: {e}", exc_info=True)
-        sys.exit(1)
+        logger.info("Остановлено пользователем.")
 
 if __name__ == "__main__":
-    import os
     main()
