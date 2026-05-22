@@ -54,11 +54,11 @@ async def run():
     server.write_request_func = write_request
 
     # Add Service
-    my_service_uuid = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
+    my_service_uuid = "6938e8b6-77d8-44e4-ab9d-d27918908cb8"
     await server.add_new_service(my_service_uuid)
 
     # Add a Characteristic
-    my_char_uuid = "fc18c54c-2f23-4c05-84bd-338ca880b786"
+    my_char_uuid = "e869108c-f2db-4772-a6ba-380a0761ef24"
     char_flags = (
         GATTCharacteristicProperties.read
         | GATTCharacteristicProperties.write
