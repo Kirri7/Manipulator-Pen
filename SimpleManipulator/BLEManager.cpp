@@ -28,8 +28,12 @@ void BLEManager::init() {
 void BLEManager::update() {
   if (doConnect == true) {
     if (connectToServer()) {
-      Serial.println("Connected to BLE Server.");
+      Serial.print("Connected to BLE Server ");
       digitalWrite(LED_BUILTIN, HIGH);
+      if (currentServiceUUID == &computerSUUID)
+        Serial.println("(Computer)");
+      else
+        Serial.println("(ESP32 device)");
     } else {
       Serial.println("Failed to connect.");
     }
