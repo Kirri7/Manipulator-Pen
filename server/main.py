@@ -25,7 +25,7 @@ TARGET_NAME = "ESP32-MPU6050-BLE"
 REMOTE_SERVICE_UUID = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
 REMOTE_CHAR_UUID = "fc18c54c-2f23-4c05-84bd-338ca880b786"
 
-# --- Наше устройство-приёмник (к нему подключается манипулятор) ---
+# --- Это устройство-приёмник (к нему подключается манипулятор) ---
 LOCAL_NAME = "BLE-Gateway"
 LOCAL_SERVICE_UUID = "6938e8b6-77d8-44e4-ab9d-d27918908cb8"  # любой другой UUID
 LOCAL_CHAR_UUID = "e869108c-f2db-4772-a6ba-380a0761ef24"
