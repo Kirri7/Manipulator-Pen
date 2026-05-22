@@ -34,7 +34,7 @@ VectorInt16 aa;
 VectorFloat gravity;
 float ypr[3];  // yaw, pitch, roll
 
-#define INTERRUPT_PIN 15  // MPU INT pin connected to GPIO15 on ESP32
+#define INTERRUPT_PIN 4  // MPU INT pin connected to GPIO15 on ESP32
 
 volatile bool mpuInterrupt = false;
 
