@@ -181,10 +181,9 @@ class BLEGateway:
             await asyncio.sleep(3600)
 
     async def run(self):
-        await self._start_server()
-
         try:
             # Крутим и сервер, и клиента одновременно
+            await self._start_server()
             await asyncio.gather(self._client_loop(), self._keepalive())
         except asyncio.CancelledError:
             logger.info("Получен сигнал остановки...")
