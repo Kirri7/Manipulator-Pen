@@ -54,7 +54,7 @@ class BLEGateway:
         self._running = True
 
     # -------------------------------------------------------------------------
-    # Bless Server — манипулятор подключается к нам
+    # Bless Server — манипулятор подключается к этому устройству
     # -------------------------------------------------------------------------
     def _read_request(self, characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
         """Отдаём текущий обработанный пакет манипулятору."""
@@ -64,7 +64,7 @@ class BLEGateway:
         return payload
 
     def _write_request(self, characteristic: BlessGATTCharacteristic, value: Any, **kwargs):
-        # TODO think about it
+        # Для избежания непредвиннего BlessError из _server.write_request_func
         """Если манипулятор что-то напишет — просто логируем."""
         logger.debug("Server WRITE %s <- %s", characteristic.uuid, value)
         characteristic.value = value
@@ -79,7 +79,7 @@ class BLEGateway:
 
         flags = (
             GATTCharacteristicProperties.read
-            | GATTCharacteristicProperties.notify   # позволяем манипулятору подписаться
+            | GATTCharacteristicProperties.notify
         )
         permissions = GATTAttributePermissions.readable
 
@@ -119,13 +119,13 @@ class BLEGateway:
             logger.warning("Не удалось уведомить манипулятор: %s", exc)
 
     # -------------------------------------------------------------------------
-    # Bleak Client — мы подключаемся к ESP32 пульту
+    # Bleak Client — это устройство подключается к ESP32 пульту
     # -------------------------------------------------------------------------
     def _on_remote_notification(self, sender: int, data: bytearray):
-        """Каждый раз, когда ESP32 шлёт уведомление — отрабатывает здесь."""
+        """Каждый раз, когда ESP32 шлёт уведомление — отрабатка здесь."""
         logger.info("Данные от пульта [%s]: %s (hex: %s)", sender, data, data.hex())
 
-        # --- Здесь ваша бизнес-логика ---
+        # TODO --- бизнес-логика ---
         processed = self._process(data)
 
         # Передаём в серверную часть без блокировки bleak-колбека
@@ -139,10 +139,11 @@ class BLEGateway:
         return raw
 
     async def _client_loop(self):
-        """Бесконечный цикл: сканировать -> подключиться -> принимать -> реконнект."""
+        """Бесконечный цикл: сканировать -> подключиться -> принимать -> переподключиться."""
         while self._running:
             try:
-                logger.info("Сканирую эфир в поисках '%s'...", TARGET_NAME)
+                logger.info("Сканирование эфира в поисках '%s'...", TARGET_NAME)
+                # TODO also use REMOTE_SERVICE_UUID for filtering
                 device = await BleakScanner.find_device_by_filter(
                     lambda d, ad: d.name == TARGET_NAME,
                     timeout=15.0,
