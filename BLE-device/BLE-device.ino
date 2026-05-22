@@ -220,7 +220,8 @@ void loop() {
       pCharacteristic->notify();
       // Print to serial for debugging
       Serial.print("Sending MPU data: ");
-      Serial.println(sensorData.c_str());
+      // Serial.println(sensorData.c_str());
+      Serial.println(cmd);
     }
   } else {
     // If DMP is not ready, send error status
