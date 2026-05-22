@@ -2,6 +2,7 @@ import sys
 import logging
 import asyncio
 import threading
+import struct
 from typing import Any, Union
 
 from bless import (
@@ -40,6 +41,33 @@ def write_request(characteristic: BlessGATTCharacteristic, value: Any, **kwargs)
             # if it's called from a different thread, but Bless usually runs in the loop.
             trigger.set()
 
+async def notify_loop(server: BlessServer, service_uuid: str, char_uuid: str):
+    """
+    Каждую секунду шлёт Notify с 32-bit unsigned int (little-endian).
+    Клиент должен быть подключен и включить Notifications (CCCD),
+    иначе пакет просто не уйдёт/будет проигнорирован.
+    """
+    counter = 0
+    while True:
+        await asyncio.sleep(1.0)  # интервал между нотификациями
+
+        # Упаковываем число в 4 байта (little-endian unsigned int)
+        payload = struct.pack("<I", counter)
+
+        try:
+            # Получаем объект характеристики и обновляем её значение
+            char = server.get_characteristic(char_uuid)
+            char.value = bytearray(payload)
+
+            # Отправляем notify подписанным клиентам
+            server.update_value(service_uuid, char_uuid)
+            logger.info(f"--> Notify отправлен: {counter} (0x{payload.hex()})")
+        except Exception as e:
+            # Обычно ошибка здесь — клиент ещё не подписался или отключился
+            logger.debug(f"Notify пропущен: {e}")
+
+        counter = (counter + 1) % 0x100000000
+
 async def run():
     global trigger
     
@@ -76,13 +104,24 @@ async def run():
     )
 
     await server.start()
-    logger.info("Сервер запущен и готов к работе вечно...")
+    logger.info("Сервер запущен и рассылает Notify каждую секунду...")
+    logger.info("Подключитесь клиентом и включите Notifications на характеристике.")
+
+    # Запускаем фоновую задачу с рассылкой
+    notifier = asyncio.create_task(notify_loop(server, my_service_uuid, my_char_uuid))
 
     try:
         # Просто держим цикл запущенным, пока не прервут программу
         while True:
             await asyncio.sleep(3600) 
     except asyncio.CancelledError:
+        pass
+    finally:
+        notifier.cancel()
+        try:
+            await notifier
+        except asyncio.CancelledError:
+            pass
         await server.stop()
 
 if __name__ == "__main__":
