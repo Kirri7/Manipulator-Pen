@@ -67,7 +67,8 @@ async def run():
     char_flags = (
         GATTCharacteristicProperties.read
         | GATTCharacteristicProperties.write
-        | GATTCharacteristicProperties.indicate
+        # | GATTCharacteristicProperties.indicate
+        | GATTCharacteristicProperties.notify
     )
     permissions = GATTAttributePermissions.readable | GATTAttributePermissions.writeable
     await server.add_new_characteristic(

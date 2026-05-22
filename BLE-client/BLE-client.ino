@@ -1,9 +1,7 @@
 #include "BLEDevice.h"
 
-/* Specify the Service UUID of Server */
-static BLEUUID serviceUUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-/* Specify the Characteristic UUID of Server */
-static BLEUUID    charUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+static BLEUUID serviceUUID("6938e8b6-77d8-44e4-ab9d-d27918908cb8");
+static BLEUUID charUUID("e869108c-f2db-4772-a6ba-380a0761ef24");
 
 static boolean doConnect = false;
 static boolean connected = false;
