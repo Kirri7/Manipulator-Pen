@@ -34,8 +34,8 @@ class Config:
     
     # Манипулятор - исходящие данные
     GATEWAY_NAME: str = "BLE-Gateway"
-    OUTPUT_SERVICE_UUID: str = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"  # Можно тот же сервис
-    OUTPUT_CHAR_UUID: str = "fc18c54c-2f23-4c05-84bd-338ca880b788"    # Другая характеристика
+    OUTPUT_SERVICE_UUID: str = "6938e8b6-77d8-44e4-ab9d-d27918908cb8"  # Можно тот же сервис
+    OUTPUT_CHAR_UUID: str = "e869108c-f2db-4772-a6ba-380a0761ef24"    # Другая характеристика
     
     # Таймауты
     SCAN_TIMEOUT: float = 10.0
