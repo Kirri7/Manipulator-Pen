@@ -94,7 +94,7 @@ class BLEGateway:
         logger.info("Сервер активен. Манипулятор может подключаться.")
 
     async def _push_to_manipulator(self, data: bytearray):
-        """Обновляем кеш и рассылаем подписчикам (notify)."""
+        """Обновляем кеш и рассылаем BLE подписчикам (notify)."""
         with self._data_lock:
             self._latest_data = data
 
@@ -112,11 +112,11 @@ class BLEGateway:
 
             result = self._server.update_value(LOCAL_SERVICE_UUID, LOCAL_CHAR_UUID)
             if inspect.isawaitable(result):
-                await result
+                await result # type: ignore
             
             logger.debug("Манипулятор успешно уведомлен")
         except Exception as exc:
-            logger.warning("Не удалось уведомить манипулятора: %s", exc)
+            logger.warning("Не удалось уведомить манипулятор: %s", exc)
 
     # -------------------------------------------------------------------------
     # Bleak Client — мы подключаемся к ESP32 пульту
