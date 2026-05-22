@@ -112,6 +112,8 @@ class BLEGateway:
             self._bless_trigger: Union[asyncio.Event, threading.Event] = threading.Event()
         else:
             self._bless_trigger = asyncio.Event()
+        # self._loop = asyncio.get_event_loop() if sys.platform != "win32" else None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     # ---------- Server (Manipulator) ----------
     def _read_request(self, characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
