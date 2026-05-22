@@ -61,6 +61,7 @@ class BLEGateway:
         return payload
 
     def _write_request(self, characteristic: BlessGATTCharacteristic, value: Any, **kwargs):
+        # TODO think about it
         """Если манипулятор что-то напишет — просто логируем."""
         logger.debug("Server WRITE %s <- %s", characteristic.uuid, value)
         characteristic.value = value
@@ -131,10 +132,8 @@ class BLEGateway:
     def _process(raw: bytearray) -> bytearray:
         """
         Заглушка обработки.
-        Сейчас просто заворачиваем байты в маленький кадр: [0xAA][LEN][RAW...]
         """
-        frame = bytearray([0xAA, len(raw)]) + raw
-        return frame
+        return raw
 
     async def _client_loop(self):
         """Бесконечный цикл: сканировать -> подключиться -> принимать -> реконнект."""
