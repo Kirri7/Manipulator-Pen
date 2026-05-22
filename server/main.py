@@ -13,6 +13,9 @@ from bless import (
     GATTAttributePermissions,
 )
 
+# TODO add AI features
+# TODO add inter-server communication
+
 # =============================================================================
 # Конфигурация
 # =============================================================================
