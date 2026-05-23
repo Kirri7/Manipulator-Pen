@@ -30,10 +30,9 @@ def angle_distance(a, b):
 def create_ship(parent, main_col, accent_col):
     """
     Создаёт наглядную асимметричную модельку "самолёта".
-    Если хочешь использовать свою модель, удали тело функции и напиши:
-        return Entity(parent=parent, model='путь/к/модели.obj', 
-                      scale=2, color=main_col)
     """
+    # return Entity(parent=parent, model='blender-monkey.glb', scale=1, color=main_col)
+
     # Фюзеляж (удлинён по Z — сразу видно, куда смотрит нос)
     body = Entity(parent=parent, model='cube', scale=(0.7, 0.5, 2.2), color=main_col)
 
