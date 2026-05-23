@@ -60,13 +60,13 @@ DirectionalLight(parent=scene, position=(5, 10, 5)).look_at((0, 0, 0))
 # --- ЛЕВАЯ сторона (Игрок) ---
 player_root = Entity(position=LEFT_POS)
 create_ship(player_root, color.red, color.orange)
-Text(text='ТЫ (красный)', position=(-0.32, -0.42), origin=(0, 0),
+Text(text='ТЫ (красный)', position=(-0.42, -0.38), origin=(0, 0),
      scale=1.8, color=color.light_gray)
 
 # --- ПРАВАЯ сторона (Образец) ---
 target_root = Entity(position=RIGHT_POS)
 create_ship(target_root, color.green, color.lime)
-Text(text='ЦЕЛЬ (зелёный)', position=(0.32, -0.42), origin=(0, 0),
+Text(text='ЦЕЛЬ (зелёный)', position=(0.42, -0.38), origin=(0, 0),
      scale=1.8, color=color.light_gray)
 
 # Камера смотрит ровно на центр между ними
@@ -89,7 +89,7 @@ new_round()
 hint = Text(
     text='W / S — вращать по X\nA / D — вращать по Y\nQ / E — вращать по Z\n'
          'Пробел — сбросить свой корабль    R — новый раунд',
-    position=(0, -0.48), origin=(0, 0), scale=1.2
+    position=(0, -0.42), origin=(0, 0), scale=1.2
 )
 status = Text(text='', position=(0, 0.35), origin=(0, 0), scale=2.5, color=color.gold)
 
