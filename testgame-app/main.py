@@ -2,6 +2,10 @@ from ursina import *
 from ursina.lights import DirectionalLight
 import random
 
+# TODO add controller support
+# TODO add BLE-device support
+# TODO add timer
+
 app = Ursina()
 window.color = color.dark_gray
 mouse.visible = True
