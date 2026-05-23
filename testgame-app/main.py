@@ -1,67 +1,142 @@
 from ursina import *
-from ursina.prefabs.first_person_controller import FirstPersonController
+from ursina.lights import DirectionalLight
+import random
 
 app = Ursina()
+window.color = color.dark_gray
+mouse.visible = True
 
-# Настройки
-target_rotation = (45, 30, 60)  # Целевое вращение (в градусах X, Y, Z)
-threshold = 0.10  # Порог точности совпадения
+# =================== НАСТРОЙКИ ===================
+ROT_SPEED   = 90          # скорость вращения (град/сек)
+THRESHOLD   = 10          # допуск совпадения (градусов)
+LEFT_POS    = (-1.5, 0, 0)
+RIGHT_POS   = ( 1.5, 0, 0)
 
-# Разделим экран: слева игрок, справа пример
-split_screen = Entity(parent=camera.ui, model='quad', scale=(1, 0.9), color=color.clear)
 
-# === ЛЕВАЯ ЧАСТЬ (Игрок) ===
-player_camera = Entity(camera=True, position=(0, 0, 10), parent=scene)
-player_scene = Entity(parent=scene, x=-2)
-player_model = Entity(parent=player_scene, model='cube', color=color.red, scale=2)
+# =================== УТИЛИТЫ ===================
+def norm_angle(a):
+    """Приводит угол к диапазону [-180, 180]"""
+    a = a % 360
+    if a > 180:
+        a -= 360
+    return a
 
-# === ПРАВАЯ ЧАСТЬ (Образец) ===
-target_camera = Entity(camera=True, position=(0, 0, 10), parent=scene)
-target_scene = Entity(parent=scene, x=2)
-target_model = Entity(parent=target_scene, model='cube', color=color.green, scale=2)
-target_model.rotation = target_rotation
+def angle_distance(a, b):
+    """Минимальное расстояние между двумя углами"""
+    return abs(norm_angle((a % 360) - (b % 360)))
 
-# Текст подсказки
-hint = Text(text='WASD/Стрелки — поворот\nЦель: совпасть с зеленым кубом', position=(-0.8, -0.45), origin=(0, 0), scale=1.5)
-success = Text(text='', position=(0, 0), origin=(0, 0), scale=2, color=color.red)
 
+# =================== МОДЕЛЬ ===================
+def create_ship(parent, main_col, accent_col):
+    """
+    Создаёт наглядную асимметричную модельку "самолёта".
+    Если хочешь использовать свою модель, удали тело функции и напиши:
+        return Entity(parent=parent, model='путь/к/модели.obj', 
+                      scale=2, color=main_col)
+    """
+    # Фюзеляж (удлинён по Z — сразу видно, куда смотрит нос)
+    body = Entity(parent=parent, model='cube', scale=(0.7, 0.5, 2.2), color=main_col)
+
+    # Нос — яркий, чтобы сразу было видно "перёд"
+    nose = Entity(parent=parent, model='cube', scale=(0.5, 0.4, 0.9),
+                  position=(0, 0, 1.4), color=accent_col)
+
+    # Хвостовое оперение
+    tail = Entity(parent=parent, model='cube', scale=(0.9, 0.08, 0.5),
+                  position=(0, 0.25, -1.0), color=accent_col)
+
+    # Крылья (разные по бокам — видно вращение по Roll)
+    wing_l = Entity(parent=parent, model='cube', scale=(1.3, 0.06, 0.45),
+                    position=(-0.65, 0, 0.2), color=accent_col)
+    wing_r = Entity(parent=parent, model='cube', scale=(1.3, 0.06, 0.45),
+                    position=(0.65, 0, 0.2), color=accent_col)
+
+    return body
+
+
+# =================== СЦЕНА ===================
+# Освещение (чтобы были тени и объём)
+DirectionalLight(parent=scene, position=(5, 10, 5)).look_at((0, 0, 0))
+
+# --- ЛЕВАЯ сторона (Игрок) ---
+player_root = Entity(position=LEFT_POS)
+create_ship(player_root, color.red, color.orange)
+Text(text='ТЫ (красный)', position=(-0.32, -0.42), origin=(0, 0),
+     scale=1.8, color=color.light_gray)
+
+# --- ПРАВАЯ сторона (Образец) ---
+target_root = Entity(position=RIGHT_POS)
+create_ship(target_root, color.green, color.lime)
+Text(text='ЦЕЛЬ (зелёный)', position=(0.32, -0.42), origin=(0, 0),
+     scale=1.8, color=color.light_gray)
+
+# Камера смотрит ровно на центр между ними
+camera.position = (0, 1.5, 11)
+camera.look_at((0, 0, 0))
+
+
+# =================== ЛОГИКА ===================
+def new_round():
+    """Задаёт новый случайный поворот цели и сбрасывает игрока"""
+    rx = random.randint(0, 359)
+    ry = random.randint(0, 359)
+    rz = random.randint(0, 359)
+    target_root.rotation = (rx, ry, rz)
+    player_root.rotation = (0, 0, 0)   # каждый раунд начинаем с нуля
+
+new_round()
+
+# UI-подсказки
+hint = Text(
+    text='W / S — вращать по X\nA / D — вращать по Y\nQ / E — вращать по Z\n'
+         'Пробел — сбросить свой корабль    R — новый раунд',
+    position=(0, -0.48), origin=(0, 0), scale=1.2
+)
+status = Text(text='', position=(0, 0.35), origin=(0, 0), scale=2.5, color=color.gold)
+
+
+# =================== UPDATE ===================
 def update():
-    # Управление: WASD / Стрелочки
-    speed_modif = 20
-    angle = speed_modif * time.dt  # Скорость поворота
+    # --- Управление ---
+    spd = ROT_SPEED * time.dt
 
     if held_keys['w'] or held_keys['up arrow']:
-        player_model.rotation_x += angle
+        player_root.rotation_x -= spd
     if held_keys['s'] or held_keys['down arrow']:
-        player_model.rotation_x -= angle
+        player_root.rotation_x += spd
     if held_keys['a'] or held_keys['left arrow']:
-        player_model.rotation_y += angle
+        player_root.rotation_y -= spd
     if held_keys['d'] or held_keys['right arrow']:
-        player_model.rotation_y -= angle
+        player_root.rotation_y += spd
     if held_keys['q']:
-        player_model.rotation_z += angle
+        player_root.rotation_z += spd
     if held_keys['e']:
-        player_model.rotation_z -= angle
+        player_root.rotation_z -= spd
 
-    # Проверка победы (через кватернионы для точности)
-    diff = player_model.rotation - target_rotation
-    # Простое сравнение углов (для прототипа)
-    if all(abs(d) < 5 for d in diff):
-        success.text = '✅ ПОБЕДА! Поворачиваю снова...'
-        success.color = color.g
-        reset_target()
+    # --- Проверка совпадения ---
+    dx = angle_distance(player_root.rotation_x, target_root.rotation_x)
+    dy = angle_distance(player_root.rotation_y, target_root.rotation_y)
+    dz = angle_distance(player_root.rotation_z, target_root.rotation_z)
+
+    # Совпали?
+    if dx < THRESHOLD and dy < THRESHOLD and dz < THRESHOLD:
+        status.text = '✅ ИДЕАЛЬНО!'
+        status.color = color.gold
+        invoke(new_round, delay=1.2) # TODO constant rotation
     else:
-        success.text = ''
+        # Показываем, насколько близко (опционально, можно убрать)
+        avg = (dx + dy + dz) / 3
+        status.text = f'Разница: {avg:.1f}°'
+        status.color = color.white
 
-def reset_target():
-    global target_rotation
-    target_rotation = random.rotation().as_euler()
-    target_model.rotation = target_rotation
 
+# =================== INPUT ===================
 def input(key):
     if key == 'escape':
         quit()
     if key == 'space':
-        reset_target()  # Новый раунд
+        player_root.rotation = (0, 0, 0)   # только сброс своей модели
+    if key == 'r':
+        new_round()                        # полный новый раунд
 
 app.run()
