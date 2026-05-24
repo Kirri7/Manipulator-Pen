@@ -56,7 +56,7 @@ def read_angles_from_file():
 
 def ble_reader_thread():
     """Поток для чтения углов из файла"""
-    while True:
+    while ANGLE_DEVICE_ENABLED:
         read_angles_from_file()
         time.sleep(0.1)  # 10 раз в секунду
 
