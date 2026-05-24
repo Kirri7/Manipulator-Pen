@@ -4,6 +4,11 @@
 
 class PacketParser {
 public:
+    struct AnglesPacket {
+        int16_t yaw;
+        int16_t pitch;
+        int16_t roll;
+    };
     /**
      * @brief Парсит 4-байтовый пакет и обновляет g_Input
      * @param pData Указатель на данные

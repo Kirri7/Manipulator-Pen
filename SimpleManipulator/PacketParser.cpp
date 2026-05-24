@@ -23,27 +23,30 @@ bool PacketParser::parseCommand(const uint8_t* pData, size_t length)  {
 }
 
 bool PacketParser::parseAngles(const uint8_t* pData, size_t length) {
-    // TODO think about packet structure
-    /*
-    // Минимум "Y0R0\n", максимум — разумный буфер
-    if (length < 3 || length > 63) return false;
-    char buf[64];
-    memcpy(buf, pData, length);
-    buf[length] = '\0';
-    // Ищем маркер 'Y', чтобы пережить возможный мусор в начале
-    char* start = strchr(buf, 'Y');
-    if (!start) return false;
-    float yaw = 0.0f;
-    float roll = 0.0f;
-    // На ESP32 %f в sscanf работает. Если когда-то перейдёте на AVR — замените на strtof
-    if (sscanf(start, "Y%fR%f", &yaw, &roll) == 2) {
-        noInterrupts();
-        g_TargetAngles.yaw = yaw;
-        g_TargetAngles.roll = roll;
-        g_TargetAngles.valid = true;
-        interrupts();
-        return true;
-    }
-    */
-    return false;
+    if (length != 6) return false;
+    AnglesPacket packet;
+    memcpy(&packet, pData, sizeof(packet));
+    
+    // Для BLE обычно little-endian или be16toh() для big-endian
+    packet.yaw = le16toh(packet.yaw);   
+    packet.pitch = le16toh(packet.pitch);
+    packet.roll = le16toh(packet.roll);
+    
+    constexpr float ANGLE_SCALE = 100.0f;
+    
+    noInterrupts();
+    // g_TargetAngles.yaw = packet.yaw / ANGLE_SCALE;
+    g_TargetAngles.pitch = packet.pitch / ANGLE_SCALE;
+    g_TargetAngles.roll = packet.roll / ANGLE_SCALE;
+    g_TargetAngles.newUpdate = true;
+    interrupts();
+
+    // Serial.print("Parsed angles: ");
+    // Serial.print(g_TargetAngles.yaw);
+    // Serial.print(", ");
+    // Serial.print(g_TargetAngles.pitch);
+    // Serial.print(", ");
+    // Serial.println(g_TargetAngles.roll);
+    
+    return true;
 }
