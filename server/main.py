@@ -13,7 +13,7 @@ from bless import (
     GATTAttributePermissions,
 )
 
-# TODO add AI features
+# TODO add connection sound
 # TODO add inter-server communication
 
 # =============================================================================
