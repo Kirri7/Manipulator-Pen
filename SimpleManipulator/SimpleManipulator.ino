@@ -17,7 +17,8 @@
 #endif
 
 // Define the global input state here
-DirectionState g_Input = {0};
+DirectionState g_Input = {};
+TargetAngles g_TargetAngles = {};
 
 void setup() {
   Serial.begin(115200);
