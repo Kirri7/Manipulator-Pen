@@ -61,6 +61,41 @@ def ble_reader_thread():
         time.sleep(0.1)  # 10 раз в секунду
 
 # =================== МОДЕЛЬ ===================
+# github.com/pokepetter/ursina/blob/master/ursina/models/procedural/cone.py
+class Cone(Mesh):
+    _cache = {}
+    def __new__(cls, resolution=4, radius=.5, height=1, add_bottom=True, mode='triangle'):
+        key = (resolution, radius, height, add_bottom, mode)
+        if key in cls._cache:
+            return deepcopy(cls._cache[key])
+
+        instance = super().__new__(cls)
+        cls._cache[key] = instance
+        return instance
+
+    def __init__(self, resolution=4, radius=.5, height=1, add_bottom=True, mode='triangle', **kwargs):
+
+        v = Vec3(radius, 0, 0)
+        origin = Vec3(0,0,0)
+        degrees_to_rotate = 360 / resolution
+
+        verts = []
+        for i in range(resolution):
+            verts.append(Vec3(v[0], -(height/2), v[1]))
+            v = rotate_around_point_2d(v, origin, -degrees_to_rotate)
+            verts.append(Vec3(v[0], -(height/2), v[1]))
+
+            verts.append(Vec3(0,height/2,0))
+        if add_bottom:
+            for i in range(resolution):
+                verts.append(Vec3(v[0], 0-(height/2), v[1]))
+                verts.append(Vec3(0,-(height/2),0))
+                v = rotate_around_point_2d(v, origin, -degrees_to_rotate)
+                verts.append(Vec3(v[0], -(height/2), v[1]))
+
+
+        super().__init__(vertices=verts, uvs=[e.xy for e in verts], mode=mode, **kwargs)
+
 def create_ship(parent, main_col, accent_col):
     """
     Создаёт наглядную асимметричную модельку "самолёта".
@@ -68,21 +103,23 @@ def create_ship(parent, main_col, accent_col):
     # return Entity(parent=parent, model='blender-monkey.glb', scale=1, color=main_col)
 
     # Фюзеляж (удлинён по Z — сразу видно, куда смотрит нос)
-    body = Entity(parent=parent, model='cube', scale=(0.7, 0.5, 2.2), color=main_col)
+    body = Entity(parent=parent, model='cube', scale=(0.1, 0.1, 2.2), color=main_col)
 
     # Нос — яркий, чтобы сразу было видно "перёд"
-    nose = Entity(parent=parent, model='cube', scale=(0.5, 0.4, 0.9),
-                  position=(0, 0, 1.4), color=accent_col)
+    nose = Entity(parent=parent, model=Cone(20), scale=(0.3, 0.3, 0.3),
+                  position=(0, 0, 1.2), color=accent_col)
+    nose.rotation_x = 90
 
     # Хвостовое оперение
-    tail = Entity(parent=parent, model='cube', scale=(0.9, 0.08, 0.5),
-                  position=(0, 0.25, -1.0), color=accent_col)
+    tail = Entity(parent=parent, model=Cone(2), scale=(0.4, 0.4, 0.1),
+                  position=(0, -0.25, -0.9), color=accent_col)
+    tail.rotation_y = 90
+    tail.rotation_x = 180
 
     # Крылья (разные по бокам — видно вращение по Roll)
-    wing_l = Entity(parent=parent, model='cube', scale=(1.3, 0.06, 0.45),
-                    position=(-0.65, 0, 0.2), color=accent_col)
-    wing_r = Entity(parent=parent, model='cube', scale=(1.3, 0.06, 0.45),
-                    position=(0.65, 0, 0.2), color=accent_col)
+    wings = Entity(parent=parent, model=Cone(2), scale=(1.5, 1, 0.1),
+                    position=(0, 0, 0.2), color=accent_col)
+    wings.rotation_x = 90
 
     return body
 
