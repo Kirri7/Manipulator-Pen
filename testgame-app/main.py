@@ -208,6 +208,8 @@ status = Text(text='', position=(0, 0.35), origin=(0, 0), scale=2.5, color=color
 def update():
     global timer_running, final_time
 
+    if hasattr(update, 'won'):
+        del update.won 
     if timer_running:
         elapsed = time.time() - start_time
         timer_text.text = f"{elapsed:.2f}s"
@@ -242,21 +244,23 @@ def update():
     dy = angle_distance(player_root.rotation_y, target_root.rotation_y)
     dz = angle_distance(player_root.rotation_z, target_root.rotation_z)
 
-    # Совпали?
     error = get_rotation_error(player_root, target_root)
-    if error < THRESHOLD:
-        status.text = 'СОВПАЛО!'
-        status.color = color.gold
-        # Чтобы не вызывалось 100 раз в секунду, можно добавить флаг
-        if not hasattr(update, 'won'):
-            update.won = True
-            timer_running = False
-            final_time = time.time() - start_time
-            invoke(new_round, delay=2.5)
+    if timer_running:
+        if error < THRESHOLD:
+            status.text = 'СОВПАЛО!'
+            status.color = color.gold
+            # Чтобы не вызывалось 100 раз в секунду, можно добавить флаг
+            if not hasattr(update, 'won'):
+                update.won = True
+                timer_running = False
+                final_time = time.time() - start_time
+                # invoke(new_round, delay=2.5)
+        else:
+            update.won = False # сброс флага
+            status.text = f'Разница: {error:.1f}°'
+            status.color = color.white
     else:
-        update.won = False # сброс флага
-        status.text = f'Разница: {error:.1f}°'
-        status.color = color.white
+        pass
 
 
 # =================== INPUT ===================
