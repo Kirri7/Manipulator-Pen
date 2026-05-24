@@ -40,6 +40,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Отдельный логгер для углов
+angle_logger = logging.getLogger("AngleLogger")
+angle_logger.setLevel(logging.INFO)
+fh = logging.FileHandler("angles.log")
+# fh.setFormatter(logging.Formatter("%(asctime)s, %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+angle_logger.addHandler(fh)
+
 # =============================================================================
 # Основной класс
 # =============================================================================
@@ -125,18 +132,47 @@ class BLEGateway:
         """Каждый раз, когда ESP32 шлёт уведомление — отрабатка здесь."""
         logger.info("Данные от пульта [%s]: %s (hex: %s)", sender, data, data.hex())
 
-        # TODO --- бизнес-логика ---
-        processed = self._process(data)
+        angles = self._process(data)
+
+        if angles:
+            pitch, roll, yaw = angles
+            angle_logger.info(f"{pitch:.2f}, {roll:.2f}, {yaw:.2f}")
 
         # Передаём в серверную часть без блокировки bleak-колбека
-        asyncio.create_task(self._push_to_manipulator(processed))
+        asyncio.create_task(self._push_to_manipulator(data))
 
     @staticmethod
-    def _process(raw: bytearray) -> bytearray:
+    def _process(raw: bytearray) -> Optional[tuple[float, float, float]]:
         """
-        Заглушка обработки.
+        Парсит 6 байт: 3 значения uint16 (little-endian).
+        Возвращает (pitch, roll, yaw) или None.
         """
-        return raw
+        if len(raw) != 6:
+            return None
+        try:
+            # '<' - little-endian, 'H' - unsigned short (2 bytes)
+            # распаковываем 3 значения по 2 байта каждое
+            unscaled_values = struct.unpack('<hhh', raw)
+            
+            # В вашем C++ коде: pitch = packet.pitch, roll = packet.roll, yaw = packet.yaw
+            # Но порядок в структуре C++ может отличаться. 
+            # Исходя из memcpy(&packet, pData, 6), порядок такой же, как в структуре.
+            # Если в C++ порядок yaw, pitch, roll, то распаковка вернет их в этом порядке.
+            
+            # Судя по вашему C++ коду: 
+            # packet.yaw = val[0], packet.pitch = val[1], packet.roll = val[2]
+            yaw_raw, pitch_raw, roll_raw = unscaled_values
+            
+            ANGLE_SCALE = 100.0
+            
+            return (
+                pitch_raw / ANGLE_SCALE,
+                roll_raw / ANGLE_SCALE,
+                yaw_raw / ANGLE_SCALE
+            )
+        except Exception as e:
+            logger.error("Ошибка обработки углов: %s", e)
+            return None
 
     async def _client_loop(self):
         """Бесконечный цикл: сканировать -> подключиться -> принимать -> переподключиться."""
