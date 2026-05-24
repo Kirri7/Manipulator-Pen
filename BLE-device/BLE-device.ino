@@ -160,6 +160,29 @@ uint32_t buildManipulatorCommand(float* ypr) {
     return command;
 }
 
+#define ANGLE_SCALE 100
+struct AnglesPacket {
+    int16_t yaw;
+    int16_t pitch;
+    int16_t roll;
+};
+static_assert(sizeof(AnglesPacket) == 6, "AnglesPacket must be 6 bytes");
+
+std::array<uint8_t, 6> buildAnglesPacket(float* ypr) {
+    AnglesPacket packet;
+    float yaw = ypr[0] * 180 / M_PI;
+    float pitch = ypr[1] * 180 / M_PI;
+    float roll = ypr[2] * 180 / M_PI;
+    // yaw = fmin(180.0f, fmax(-180.0f, yaw)); 
+    packet.yaw = static_cast<int16_t>(yaw * ANGLE_SCALE);
+    packet.pitch = static_cast<int16_t>(pitch * ANGLE_SCALE);
+    packet.roll = static_cast<int16_t>(roll * ANGLE_SCALE);
+    
+    std::array<uint8_t, 6> buffer;
+    memcpy(buffer.data(), &packet, sizeof(packet));
+    return buffer;
+}
+
 void loop() {
   // Read MPU6050 data if DMP is ready
   if (dmpReady) {
@@ -215,11 +238,15 @@ void loop() {
       // pCharacteristic->notify();
       // Send manipulator command as BLE characteristic (left,right,up,down bits)
       float yprArray[3] = {ypr[0], ypr[1], ypr[2]};
-      uint32_t cmd = buildManipulatorCommand(yprArray);
-      // Set the command as 4-byte little-endian value
-      pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
+      
+      // uint32_t cmd = buildManipulatorCommand(yprArray);
+      // pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
+      
+      auto packet = buildAnglesPacket(ypr);
+      pCharacteristic->setValue(packet.data(), packet.size());
+      
       pCharacteristic->notify();
-      // Print to serial for debugging
+      
       Serial.print("Sending MPU data: ");
       // Serial.println(sensorData.c_str());
       Serial.println(cmd);
