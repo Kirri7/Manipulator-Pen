@@ -137,7 +137,7 @@ Text(text='ТЫ (красный)', position=(-0.42, -0.38), origin=(0, 0),
 
 # --- ПРАВАЯ сторона (Образец) ---
 target_root = Entity(position=RIGHT_POS)
-create_ship(target_root, color.green, color.lime)
+create_ship(target_root, color.green, color.olive)
 Text(text='ЦЕЛЬ (зелёный)', position=(0.42, -0.38), origin=(0, 0),
      scale=1.8, color=color.light_gray)
 
