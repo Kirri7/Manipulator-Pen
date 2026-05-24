@@ -11,4 +11,5 @@ public:
      * @return true если пакет корректен и обработан, false если ошибка
      */
     static bool parseCommand(const uint8_t* pData, size_t length);
+    static bool parseAngles(const uint8_t* pData, size_t length);
 };

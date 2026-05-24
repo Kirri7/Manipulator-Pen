@@ -61,8 +61,15 @@ struct DirectionState {
   bool down = false;
 };
 
+struct TargetAngles {
+  float yaw = 0.0f;
+  float roll = 0.0f;
+//   bool newUpdate = false;
+};
+
 // Global instance to be updated by communication modules
 extern DirectionState g_Input;
+extern TargetAngles g_TargetAngles;
 
 // --- EXTERNAL FUNCTION DECLARATIONS ---
 extern void initMotors();

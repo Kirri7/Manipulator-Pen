@@ -21,3 +21,27 @@ bool PacketParser::parseCommand(const uint8_t* pData, size_t length)  {
 
     return true;
 }
+
+bool PacketParser::parseAngles(const uint8_t* pData, size_t length) {
+    // TODO think about packet structure
+    /*
+    // Минимум "Y0R0\n", максимум — разумный буфер
+    if (length < 3 || length > 63) return false;
+    char buf[64];
+    memcpy(buf, pData, length);
+    buf[length] = '\0';
+    // Ищем маркер 'Y', чтобы пережить возможный мусор в начале
+    char* start = strchr(buf, 'Y');
+    if (!start) return false;
+    float yaw = 0.0f;
+    float roll = 0.0f;
+    // На ESP32 %f в sscanf работает. Если когда-то перейдёте на AVR — замените на strtof
+    if (sscanf(start, "Y%fR%f", &yaw, &roll) == 2) {
+        g_TargetAngles.yaw = yaw;
+        g_TargetAngles.roll = roll;
+        // g_TargetAngles.valid = true;
+        return true;
+    }
+    */
+    return false;
+}
