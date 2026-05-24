@@ -74,7 +74,8 @@ bool BLEManager::connectToServer() {
 
 void BLEManager::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
                     uint8_t* pData, size_t length, bool isNotify) {
-    PacketParser::parseCommand(pData, length);
+    // PacketParser::parseCommand(pData, length);
+    PacketParser::parseAngles(pData, length);
     // Serial.printf("Cmd: 0x%08X | R:%d L:%d U:%d D:%d\n", command, g_Input.right, g_Input.left, g_Input.up, g_Input.down);
 }
 
