@@ -1,5 +1,6 @@
 #include "MotorController.h"
 #include "config.h"
+#include <cmath>
 
 // Global Steppers and Planners
 Stepper<STEPPER2WIRE> MTR1(19, 21);
