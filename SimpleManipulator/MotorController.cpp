@@ -58,6 +58,23 @@ void updateMotors() {
     planner_mtr1.tick();
 }
 
+// TODO уйти от индексов массива к углам шаговиков напрямую
+// int32_t angleToSteps(float angle, float spdeg, int32_t zero)
+// void setTargetFromAngles(float newYaw, float newRoll)
+
+int angleToIndex(float angle) {
+    /* 
+     угол наклона в индекс path массива
+     Использование: planner_mtr1.setTarget(path1[angleToIndex(targetYaw)]);
+    */
+    if (angle < DEG_MIN) angle = DEG_MIN;
+    if (angle >  DEG_MAX) angle =  DEG_MAX;
+    // предполагаем, что массив покрывает -60..+60 равномерно
+    float norm = (angle + 60.0f) / 120.0f; // 0..1
+    int idx = (int)roundf(norm * (pointAm - 1));
+    return idx;
+}
+
 void processMotorLogic() {
     static uint32_t tmr4 = 0;
     static uint32_t tmr5 = 0;
