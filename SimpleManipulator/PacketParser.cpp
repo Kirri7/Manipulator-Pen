@@ -43,8 +43,6 @@ bool PacketParser::parseAngles(const uint8_t* pData, size_t length) {
     interrupts();
 
     // Serial.print("Parsed angles: ");
-    // Serial.print(g_TargetAngles.yaw);
-    // Serial.print(", ");
     // Serial.print(g_TargetAngles.pitch);
     // Serial.print(", ");
     // Serial.println(g_TargetAngles.roll);
