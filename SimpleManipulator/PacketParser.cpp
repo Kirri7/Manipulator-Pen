@@ -2,7 +2,7 @@
 #include "config.h"
 
 bool PacketParser::parseCommand(const uint8_t* pData, size_t length)  {
-    if (length != sizeof(int32_t)) {
+    if (length != sizeof(int32_t) or !pData) {
         return false;
     }
 
