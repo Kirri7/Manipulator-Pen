@@ -1,3 +1,4 @@
+import threading
 from ursina import *
 from ursina.lights import DirectionalLight
 import random
@@ -17,8 +18,8 @@ LEFT_POS    = (-1.5, 0, 0)
 RIGHT_POS   = ( 1.5, 0, 0)
 CURRENT_ANGLES = [0, 0, 0]  # [yaw, roll, pitch]
 ANGLE_FILE = 'ble_angles.txt'
-KEYBOARD_ENABLED = true
-ANGLE_DEVICE_ENABLED = true
+KEYBOARD_ENABLED = True
+ANGLE_DEVICE_ENABLED = False
 
 # =================== УТИЛИТЫ ===================
 def norm_angle(a):
