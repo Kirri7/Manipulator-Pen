@@ -3,6 +3,7 @@ from ursina import *
 from ursina.lights import DirectionalLight
 import random
 from copy import deepcopy
+import math
 
 # TODO add controller support
 # TODO add BLE-device support
@@ -60,6 +61,31 @@ def ble_reader_thread():
     while ANGLE_DEVICE_ENABLED:
         read_angles_from_file()
         time.sleep(0.1)  # 10 раз в секунду
+
+def get_rotation_error(obj1, obj2):
+    """
+    Вычисляет среднюю ошибку вращения между двумя объектами,
+    используя скалярное произведение векторов (самый точный метод).
+    """
+    # 1. Проверяем направление "носа" (Forward vector)
+    # В Ursina forward это (0,0,1) в локальных координатах
+    f1 = obj1.forward
+    f2 = obj2.forward
+    
+    # Скалярное произведение векторов дает косинус угла между ними
+    # dot = cos(theta). Чем ближе к 1.0, тем меньше угол.
+    dot_f = f1.dot(f2)
+    # Ограничиваем от -1 до 1, чтобы избежать ошибок math.acos из-за погрешностей float
+    dot_f = max(-1, min(1, dot_f))
+    error_f = math.degrees(math.acos(dot_f))
+    # 2. Проверяем направление "верха" (Up vector), чтобы учесть крен (Roll)
+    u1 = obj1.up
+    u2 = obj2.up
+    dot_u = u1.dot(u2)
+    dot_u = max(-1, min(1, dot_u))
+    error_u = math.degrees(math.acos(dot_u))
+    # Возвращаем среднюю ошибку между направлением носа и верха
+    return (error_f + error_u) / 2
 
 # =================== МОДЕЛЬ ===================
 # github.com/pokepetter/ursina/blob/master/ursina/models/procedural/cone.py
@@ -196,14 +222,17 @@ def update():
     dz = angle_distance(player_root.rotation_z, target_root.rotation_z)
 
     # Совпали?
-    if dx < THRESHOLD and dy < THRESHOLD and dz < THRESHOLD:
+    error = get_rotation_error(player_root, target_root)
+    if error < THRESHOLD:
         status.text = '✅ ИДЕАЛЬНО!'
         status.color = color.gold
-        invoke(new_round, delay=1.2) # TODO constant rotation
+        # Чтобы не вызывалось 100 раз в секунду, можно добавить флаг
+        if not hasattr(update, 'won'):
+            update.won = True
+            invoke(new_round, delay=1.5)
     else:
-        # Показываем, насколько близко (опционально, можно убрать)
-        avg = (dx + dy + dz) / 3
-        status.text = f'Разница: {avg:.1f}°'
+        update.won = False # сброс флага
+        status.text = f'Разница: {error:.1f}°'
         status.color = color.white
 
 
