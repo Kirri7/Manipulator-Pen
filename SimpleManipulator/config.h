@@ -50,7 +50,6 @@ const int pointAm = std::size(path1);
 // assert(...)
 
 // предельные значения наклона пульта, дальше которых установка не пойдёт
-const float DEG_MIN = -60.0f;
 const float DEG_MAX =  60.0f;
 
 // --- GLOBAL STATE STRUCT ---

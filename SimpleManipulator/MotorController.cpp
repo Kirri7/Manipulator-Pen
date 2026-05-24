@@ -67,10 +67,10 @@ int angleToIndex(float angle) {
      угол наклона в индекс path массива
      Использование: planner_mtr1.setTarget(path1[angleToIndex(targetYaw)]);
     */
-    if (angle < DEG_MIN) angle = DEG_MIN;
+    if (angle < -DEG_MAX) angle = -DEG_MAX;
     if (angle >  DEG_MAX) angle =  DEG_MAX;
     // предполагаем, что массив покрывает -60..+60 равномерно
-    float norm = (angle + 60.0f) / 120.0f; // 0..1
+    float norm = (angle + DEG_MAX) / (2 * DEG_MAX); // 0..1
     int idx = (int)roundf(norm * (pointAm - 1));
     return idx;
 }
