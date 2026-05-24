@@ -23,6 +23,12 @@ ANGLE_FILE = 'ble_angles.txt'
 KEYBOARD_ENABLED = True
 ANGLE_DEVICE_ENABLED = False
 
+# =================== НАСТРОЙКИ ТАЙМЕРА ===================
+timer_running = False
+start_time = 0
+final_time = 0
+timer_text = Text(text='0.00s', position=(0, 0.45), origin=(0, 0), scale=2, color=color.cyan)
+
 # =================== УТИЛИТЫ ===================
 def norm_angle(a):
     """Приводит угол к диапазону [-180, 180]"""
@@ -181,6 +187,12 @@ def new_round():
     target_root.rotation = (rx, ry, rz)
     player_root.rotation = (0, 0, 0)   # каждый раунд начинаем с нуля
 
+    global timer_running, start_time, final_time
+    start_time = time.time()
+    timer_running = True
+    final_time = 0
+    timer_text.color = color.cyan
+
 new_round()
 
 # UI-подсказки
@@ -194,6 +206,15 @@ status = Text(text='', position=(0, 0.35), origin=(0, 0), scale=2.5, color=color
 
 # =================== UPDATE ===================
 def update():
+    global timer_running, final_time
+
+    if timer_running:
+        elapsed = time.time() - start_time
+        timer_text.text = f"{elapsed:.2f}s"
+    elif final_time > 0:
+        timer_text.text = f"FINISH: {final_time:.2f}s"
+        timer_text.color = color.gold
+    
     # --- Управление ---
     spd = ROT_SPEED * time.dt
 
@@ -229,7 +250,9 @@ def update():
         # Чтобы не вызывалось 100 раз в секунду, можно добавить флаг
         if not hasattr(update, 'won'):
             update.won = True
-            invoke(new_round, delay=1.5)
+            timer_running = False
+            final_time = time.time() - start_time
+            invoke(new_round, delay=2.5)
     else:
         update.won = False # сброс флага
         status.text = f'Разница: {error:.1f}°'
