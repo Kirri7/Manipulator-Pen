@@ -32,6 +32,7 @@ uint8_t fifoBuffer[64];
 
 // orientation/motion vars
 Quaternion q;
+Quaternion qCal;
 VectorInt16 aa;
 VectorFloat gravity;
 float ypr[3];  // yaw, pitch, roll
@@ -46,6 +47,8 @@ void setup() {
 
   // Initialize MPU6050
   mpu_initialize();
+  delay(1000);
+  calibrateMPU();
 
   // Initialize BLE Device with a name
   BLEDevice::init("ESP32-MPU6050-BLE");
@@ -155,56 +158,46 @@ float normalizeAngle(float angle) {
 }
 
 void calibrateMPU() {
-    Serial.println("Калибровка устройства...");
-    Serial.println("Держите устройство в желаемом нулевом положении");
-
-    float sumYaw = 0, sumPitch = 0, sumRoll = 0;
-    int validSamples = 0;
-
-    for (int i = 0; i < CALIBRATION_SAMPLES; i++) {
-        if (mpuInterrupt || mpu.getFIFOCount() >= packetSize) {
-            mpuInterrupt = false;
-
-            // Считываем данные из FIFO
-            mpu.getFIFOBytes(fifoBuffer, packetSize);
-            fifoCount -= packetSize;
-
-            // Получаем кватернион
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-
-            // Суммируем значения
-            // TODO overflow?
-            sumYaw += ypr[0];
-            sumPitch += ypr[1];
-            sumRoll += ypr[2];
-            ++validSamples;
-
-            Serial.print(".");
-        }
-        delay(CALIBRATION_DELAY_MS);
+  Serial.println("DMP stabilization (2 sec)...");
+  mpu.resetFIFO();
+  delay(2000); // даём время фильтру Madgwick в DMP стабилизироваться
+  Serial.println("Calibrating zero position. DO NOT MOVE...");
+  float sumW = 0, sumX = 0, sumY = 0, sumZ = 0;
+  int count = 0;
+  const int need = 100;
+  unsigned long start = millis();
+  mpu.resetFIFO(); // чистим перед стартом
+  while (count < need && millis() - start < 3000) {
+    if (mpuInterrupt || mpu.getFIFOCount() >= packetSize) {
+      mpuInterrupt = false;
+      // Если накопилось много пакетов — сбрасываем старые, читаем только свежий
+      while (mpu.getFIFOCount() >= packetSize * 2) {
+        mpu.getFIFOBytes(fifoBuffer, packetSize);
+      }
+      mpu.getFIFOBytes(fifoBuffer, packetSize);
+      mpu.dmpGetQuaternion(&q, fifoBuffer);
+      sumW += q.w; sumX += q.x; sumY += q.y; sumZ += q.z;
+      count++;
+      if (count % 20 == 0) Serial.print(".");
     }
-
-    // Вычисляем среднее значение
-    if (validSamples > 0) {
-        yprOffset[0] = sumYaw / validSamples;
-        yprOffset[1] = sumPitch / validSamples;
-        yprOffset[2] = sumRoll / validSamples;
-
-        calibrated = true;
-
-        Serial.println("\nКалибровка завершена!");
-        Serial.print("Смещения (град): Yaw=");
-        Serial.print(yprOffset[0] * 180 / M_PI, 2);
-        Serial.print(", Pitch=");
-        Serial.print(yprOffset[1] * 180 / M_PI, 2);
-        Serial.print(", Roll=");
-        Serial.print(yprOffset[2] * 180 / M_PI, 2);
-        Serial.println("");
-    } else {
-        Serial.println("\nОшибка калибровки: нет валидных данных");
-    }
+    yield(); // не блокируем WiFi/BLE на ESP32
+  }
+  if (count > 0) {
+    // Усредняем и нормализуем
+    q.w = sumW / count; q.x = sumX / count; q.y = sumY / count; q.z = sumZ / count;
+    float norm = sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+    q.w /= norm; q.x /= norm; q.y /= norm; q.z /= norm;
+    // Сохраняем ОБРАТНЫЙ (сопряжённый) кватернион: qCal = q^{-1}
+    // Для единичного кватерниона: q^{-1} = (w, -x, -y, -z)
+    qCal.w =  q.w;
+    qCal.x = -q.x;
+    qCal.y = -q.y;
+    qCal.z = -q.z;
+    calibrated = true;
+    Serial.println("\nCalibration done. qCal stored.");
+  } else {
+    Serial.println("\nCalibration FAILED!");
+  }
 }
 
 #define YAW_THRESHOLD     45.0f   // yaw threshold
@@ -280,18 +273,26 @@ void loop() {
 
       // Get quaternion and calculate yaw/pitch/roll
       mpu.dmpGetQuaternion(&q, fifoBuffer);
-      mpu.dmpGetGravity(&gravity, &q);
-      mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+      if (calibrated) {
+        // Вычисляем относительный кватернион: qRel = qCal * q_current
+        // qCal уже хранит обратный (conjugate) от калибровочного момента
+        Quaternion qRel;
+        qRel.w = qCal.w*q.w - qCal.x*q.x - qCal.y*q.y - qCal.z*q.z;
+        qRel.x = qCal.w*q.x + qCal.x*q.w + qCal.y*q.z - qCal.z*q.y;
+        qRel.y = qCal.w*q.y - qCal.x*q.z + qCal.y*q.w + qCal.z*q.x;
+        qRel.z = qCal.w*q.z + qCal.x*q.y - qCal.y*q.x + qCal.z*q.w;
+        // Из относительного кватерниона получаем углы
+        mpu.dmpGetGravity(&gravity, &qRel);
+        mpu.dmpGetYawPitchRoll(ypr, &qRel, &gravity);
+      } else {
+        // Без калибровки — абсолютные углы
+        mpu.dmpGetGravity(&gravity, &q);
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+      }
 
-      float yprCal[3];
-      yprCal[0] = normalizeAngle(ypr[0] - yprOffset[0]);
-      yprCal[1] = normalizeAngle(ypr[1] - yprOffset[1]);
-      yprCal[2] = normalizeAngle(ypr[2] - yprOffset[2]);
-
-      // Convert to degrees
-      float yaw = yprCal[0] * 180 / M_PI;
-      float pitch = yprCal[1] * 180 / M_PI;
-      float roll = yprCal[2] * 180 / M_PI;
+      float yaw   = ypr[0] * 180.0f / M_PI;
+      float pitch = ypr[1] * 180.0f / M_PI;
+      float roll  = ypr[2] * 180.0f / M_PI;
 
       // Create JSON string with real MPU6050 data
       String sensorData = "{\"yaw\":" + String(yaw, 2) +
@@ -307,12 +308,12 @@ void loop() {
       // Notify all connected clients about the new value
       // pCharacteristic->notify();
       // Send manipulator command as BLE characteristic (left,right,up,down bits)
-      float yprArray[3] = {yprCal[0], yprCal[1], yprCal[2]};
+      float yprArray[3] = {ypr[0], ypr[1], ypr[2]};
 
       // uint32_t cmd = buildManipulatorCommand(yprArray);
       // pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
 
-      auto packet = buildAnglesPacket(yprCal);
+      auto packet = buildAnglesPacket(ypr);
       pCharacteristic->setValue(packet.data(), packet.size());
 
       pCharacteristic->notify();
