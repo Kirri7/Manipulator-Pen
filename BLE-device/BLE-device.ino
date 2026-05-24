@@ -2,6 +2,7 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <cstdint>
+#include <array>
 
 // I2Cdev and MPU6050 libraries
 #include "I2Cdev.h"
@@ -69,7 +70,7 @@ void setup() {
 
   // Set initial value
   pCharacteristic->setValue("Ready");
-  
+
   // Start the service
   pService->start();
   Serial.println("Service started");
@@ -80,7 +81,7 @@ void setup() {
   pAdvertising->setScanResponse(true);
   pAdvertising->setMinPreferred(0x06);
   pAdvertising->setMinPreferred(0x12);
-  
+
   // Start advertising to make device discoverable
   BLEDevice::startAdvertising();
   Serial.println("BLE Peripheral is now discoverable!");
