@@ -37,9 +37,11 @@ bool PacketParser::parseAngles(const uint8_t* pData, size_t length) {
     float roll = 0.0f;
     // На ESP32 %f в sscanf работает. Если когда-то перейдёте на AVR — замените на strtof
     if (sscanf(start, "Y%fR%f", &yaw, &roll) == 2) {
+        noInterrupts();
         g_TargetAngles.yaw = yaw;
         g_TargetAngles.roll = roll;
-        // g_TargetAngles.valid = true;
+        g_TargetAngles.valid = true;
+        interrupts();
         return true;
     }
     */
