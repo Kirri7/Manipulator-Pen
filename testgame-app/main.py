@@ -214,7 +214,7 @@ def update():
         elapsed = time.time() - start_time
         timer_text.text = f"{elapsed:.2f}s"
     elif final_time > 0:
-        timer_text.text = f"FINISH: {final_time:.2f}s"
+        timer_text.text = f"Результат: {final_time:.2f}s"
         timer_text.color = color.gold
     
     # --- Управление ---
