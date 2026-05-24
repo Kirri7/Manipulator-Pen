@@ -17,9 +17,9 @@ THRESHOLD   = 10          # допуск совпадения (градусов)
 LEFT_POS    = (-1.5, 0, 0)
 RIGHT_POS   = ( 1.5, 0, 0)
 CURRENT_ANGLES = [0, 0, 0]  # [yaw, roll, pitch]
-ANGLE_FILE = 'ble_angles.txt'
+ANGLE_FILE = 'angles.log'
 KEYBOARD_ENABLED = True
-ANGLE_DEVICE_ENABLED = False
+ANGLE_DEVICE_ENABLED = True
 
 # =================== НАСТРОЙКИ ТАЙМЕРА ===================
 timer_running = False
@@ -56,7 +56,7 @@ def read_angles_from_file():
                         # Конвертируем в числа
                         angles = [float(p.strip()) for p in parts]
                         CURRENT_ANGLES = angles
-                        print(f"New angles: {CURRENT_ANGLES}")
+                        # print(f"New angles: {CURRENT_ANGLES}")
     except Exception as e:
         print(f"Error reading angles: {e}")
 
@@ -233,9 +233,10 @@ def update():
             player_root.rotation_z -= spd
 
     if ANGLE_DEVICE_ENABLED:
-        player_root.rotation_x = -CURRENT_ANGLES[2]  # pitch
-        player_root.rotation_y = CURRENT_ANGLES[0]   # yaw
-        player_root.rotation_z = CURRENT_ANGLES[1]   # roll
+        print(f"pitch {CURRENT_ANGLES[0]}, yaw {CURRENT_ANGLES[2]}, roll {CURRENT_ANGLES[1]}")
+        player_root.rotation_x = CURRENT_ANGLES[0]  # pitch
+        player_root.rotation_y = CURRENT_ANGLES[2]  # yaw
+        player_root.rotation_z = CURRENT_ANGLES[1]  # roll
 
     # --- Проверка совпадения ---
     dx = angle_distance(player_root.rotation_x, target_root.rotation_x)
