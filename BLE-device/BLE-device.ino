@@ -173,11 +173,11 @@ std::array<uint8_t, 6> buildAnglesPacket(float* ypr) {
     float yaw = ypr[0] * 180 / M_PI;
     float pitch = ypr[1] * 180 / M_PI;
     float roll = ypr[2] * 180 / M_PI;
-    // yaw = fmin(180.0f, fmax(-180.0f, yaw)); 
+    // yaw = fmin(180.0f, fmax(-180.0f, yaw));
     packet.yaw = static_cast<int16_t>(yaw * ANGLE_SCALE);
     packet.pitch = static_cast<int16_t>(pitch * ANGLE_SCALE);
     packet.roll = static_cast<int16_t>(roll * ANGLE_SCALE);
-    
+
     std::array<uint8_t, 6> buffer;
     memcpy(buffer.data(), &packet, sizeof(packet));
     return buffer;
@@ -224,29 +224,29 @@ void loop() {
       float roll = ypr[2] * 180 / M_PI;
 
       // Create JSON string with real MPU6050 data
-      String sensorData = "{\"yaw\":" + String(yaw, 2) + 
-                          ",\"pitch\":" + String(pitch, 2) + 
-                          ",\"roll\":" + String(roll, 2) + 
-                          ",\"quat_w\":" + String(q.w, 4) + 
-                          ",\"quat_x\":" + String(q.x, 4) + 
-                          ",\"quat_y\":" + String(q.y, 4) + 
+      String sensorData = "{\"yaw\":" + String(yaw, 2) +
+                          ",\"pitch\":" + String(pitch, 2) +
+                          ",\"roll\":" + String(roll, 2) +
+                          ",\"quat_w\":" + String(q.w, 4) +
+                          ",\"quat_x\":" + String(q.x, 4) +
+                          ",\"quat_y\":" + String(q.y, 4) +
                           ",\"quat_z\":" + String(q.z, 4) + "}";
-      
+
       // Update the characteristic value
       // pCharacteristic->setValue(sensorData.c_str());
       // Notify all connected clients about the new value
       // pCharacteristic->notify();
       // Send manipulator command as BLE characteristic (left,right,up,down bits)
       float yprArray[3] = {ypr[0], ypr[1], ypr[2]};
-      
+
       // uint32_t cmd = buildManipulatorCommand(yprArray);
       // pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
-      
+
       auto packet = buildAnglesPacket(ypr);
       pCharacteristic->setValue(packet.data(), packet.size());
-      
+
       pCharacteristic->notify();
-      
+
       Serial.print("Sending MPU data: ");
       // Serial.println(sensorData.c_str());
       Serial.println(cmd);
