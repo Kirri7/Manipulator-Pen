@@ -13,7 +13,7 @@ void SerialManager::update() {
     serial_buf[buf_idx++] = cmd;
     if (buf_idx == 4) {
       buf_idx = 0;
-      PacketParser::parseCommand(serial_buf, 4);
+      PacketParser::parseAngles(serial_buf, 4);
     }
   }
 }

@@ -39,7 +39,7 @@ void WiFiManager::update() {
     if (client.available() >= sizeof(int32_t)) {
         uint8_t buffer[4];
         client.readBytes(buffer, 4);
-        PacketParser::parseCommand(buffer, 4);
+        PacketParser::parseAngles(buffer, 4);
     }
     // If available() < 4, we just wait for the next loop. 
     // No flushing, no blocking.
