@@ -15,7 +15,10 @@ ROT_SPEED   = 90          # скорость вращения (град/сек)
 THRESHOLD   = 10          # допуск совпадения (градусов)
 LEFT_POS    = (-1.5, 0, 0)
 RIGHT_POS   = ( 1.5, 0, 0)
-
+CURRENT_ANGLES = [0, 0, 0]  # [yaw, roll, pitch]
+ANGLE_FILE = 'ble_angles.txt'
+KEYBOARD_ENABLED = true
+ANGLE_DEVICE_ENABLED = true
 
 # =================== УТИЛИТЫ ===================
 def norm_angle(a):
@@ -29,6 +32,32 @@ def angle_distance(a, b):
     """Минимальное расстояние между двумя углами"""
     return abs(norm_angle((a % 360) - (b % 360)))
 
+def read_angles_from_file():
+    """
+    Читает последнюю строку из файла с углами.
+    Формат: yaw, roll, pitch
+    """
+    global CURRENT_ANGLES
+    try:
+        with open(ANGLE_FILE, 'r') as f:
+            lines = f.readlines()
+            if lines:
+                last_line = lines[-1].strip()
+                if last_line:
+                    parts = last_line.split(',')
+                    if len(parts) == 3:
+                        # Конвертируем в числа
+                        angles = [float(p.strip()) for p in parts]
+                        CURRENT_ANGLES = angles
+                        print(f"New angles: {CURRENT_ANGLES}")
+    except Exception as e:
+        print(f"Error reading angles: {e}")
+
+def ble_reader_thread():
+    """Поток для чтения углов из файла"""
+    while True:
+        read_angles_from_file()
+        time.sleep(0.1)  # 10 раз в секунду
 
 # =================== МОДЕЛЬ ===================
 def create_ship(parent, main_col, accent_col):
@@ -103,18 +132,24 @@ def update():
     # --- Управление ---
     spd = ROT_SPEED * time.dt
 
-    if held_keys['w'] or held_keys['up arrow']:
-        player_root.rotation_x -= spd
-    if held_keys['s'] or held_keys['down arrow']:
-        player_root.rotation_x += spd
-    if held_keys['a'] or held_keys['left arrow']:
-        player_root.rotation_y -= spd
-    if held_keys['d'] or held_keys['right arrow']:
-        player_root.rotation_y += spd
-    if held_keys['q']:
-        player_root.rotation_z += spd
-    if held_keys['e']:
-        player_root.rotation_z -= spd
+    if KEYBOARD_ENABLED:
+        if held_keys['w'] or held_keys['up arrow']:
+            player_root.rotation_x -= spd
+        if held_keys['s'] or held_keys['down arrow']:
+            player_root.rotation_x += spd
+        if held_keys['a'] or held_keys['left arrow']:
+            player_root.rotation_y -= spd
+        if held_keys['d'] or held_keys['right arrow']:
+            player_root.rotation_y += spd
+        if held_keys['q']:
+            player_root.rotation_z += spd
+        if held_keys['e']:
+            player_root.rotation_z -= spd
+
+    if ANGLE_DEVICE_ENABLED:
+        player_root.rotation_x = -CURRENT_ANGLES[2]  # pitch
+        player_root.rotation_y = CURRENT_ANGLES[0]   # yaw
+        player_root.rotation_z = CURRENT_ANGLES[1]   # roll
 
     # --- Проверка совпадения ---
     dx = angle_distance(player_root.rotation_x, target_root.rotation_x)
@@ -142,4 +177,5 @@ def input(key):
     if key == 'r':
         new_round()                        # полный новый раунд
 
+threading.Thread(target=ble_reader_thread, daemon=True).start()
 app.run()
