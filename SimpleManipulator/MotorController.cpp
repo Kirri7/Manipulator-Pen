@@ -208,7 +208,7 @@ void processMotorLogic() {
         }
     }
 
-    if (g_TargetAngles.newUpdate) {
+    if (g_TargetAngles.newUpdate && planner_mtr1.ready() && planner_mtr2.ready()) {
         float currentTargetPitch, currentTargetRoll;
         
         noInterrupts();
