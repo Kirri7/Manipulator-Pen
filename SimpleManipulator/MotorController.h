@@ -11,4 +11,5 @@ extern GPlanner<STEPPER2WIRE, 1> planner_mtr2;
 
 extern void initMotors();
 extern void updateMotors();
+extern int angleToIndex(float angle);
 extern void processMotorLogic();
