@@ -143,6 +143,70 @@ void mpu_initialize() {
   }
 }
 
+#define CALIBRATION_SAMPLES 100
+#define CALIBRATION_DELAY_MS 100
+float yprOffset[3] = {0, 0, 0}; // yaw, pitch, roll offset
+bool calibrated = false;
+
+float normalizeAngle(float angle) {
+  while (angle > M_PI)  angle -= 2 * M_PI;
+  while (angle < -M_PI) angle += 2 * M_PI;
+  return angle;
+}
+
+void calibrateMPU() {
+    Serial.println("Калибровка устройства...");
+    Serial.println("Держите устройство в желаемом нулевом положении");
+
+    float sumYaw = 0, sumPitch = 0, sumRoll = 0;
+    int validSamples = 0;
+
+    for (int i = 0; i < CALIBRATION_SAMPLES; i++) {
+        if (mpuInterrupt || mpu.getFIFOCount() >= packetSize) {
+            mpuInterrupt = false;
+
+            // Считываем данные из FIFO
+            mpu.getFIFOBytes(fifoBuffer, packetSize);
+            fifoCount -= packetSize;
+
+            // Получаем кватернион
+            mpu.dmpGetQuaternion(&q, fifoBuffer);
+            mpu.dmpGetGravity(&gravity, &q);
+            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+
+            // Суммируем значения
+            // TODO overflow?
+            sumYaw += ypr[0];
+            sumPitch += ypr[1];
+            sumRoll += ypr[2];
+            ++validSamples;
+
+            Serial.print(".");
+        }
+        delay(CALIBRATION_DELAY_MS);
+    }
+
+    // Вычисляем среднее значение
+    if (validSamples > 0) {
+        yprOffset[0] = sumYaw / validSamples;
+        yprOffset[1] = sumPitch / validSamples;
+        yprOffset[2] = sumRoll / validSamples;
+
+        calibrated = true;
+
+        Serial.println("\nКалибровка завершена!");
+        Serial.print("Смещения (град): Yaw=");
+        Serial.print(yprOffset[0] * 180 / M_PI, 2);
+        Serial.print(", Pitch=");
+        Serial.print(yprOffset[1] * 180 / M_PI, 2);
+        Serial.print(", Roll=");
+        Serial.print(yprOffset[2] * 180 / M_PI, 2);
+        Serial.println("");
+    } else {
+        Serial.println("\nОшибка калибровки: нет валидных данных");
+    }
+}
+
 #define YAW_THRESHOLD     45.0f   // yaw threshold
 #define PITCH_THRESHOLD   45.0f   // pitch threshold
 
@@ -219,10 +283,15 @@ void loop() {
       mpu.dmpGetGravity(&gravity, &q);
       mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
+      float yprCal[3];
+      yprCal[0] = normalizeAngle(ypr[0] - yprOffset[0]);
+      yprCal[1] = normalizeAngle(ypr[1] - yprOffset[1]);
+      yprCal[2] = normalizeAngle(ypr[2] - yprOffset[2]);
+
       // Convert to degrees
-      float yaw = ypr[0] * 180 / M_PI;
-      float pitch = ypr[1] * 180 / M_PI;
-      float roll = ypr[2] * 180 / M_PI;
+      float yaw = yprCal[0] * 180 / M_PI;
+      float pitch = yprCal[1] * 180 / M_PI;
+      float roll = yprCal[2] * 180 / M_PI;
 
       // Create JSON string with real MPU6050 data
       String sensorData = "{\"yaw\":" + String(yaw, 2) +
@@ -238,12 +307,12 @@ void loop() {
       // Notify all connected clients about the new value
       // pCharacteristic->notify();
       // Send manipulator command as BLE characteristic (left,right,up,down bits)
-      float yprArray[3] = {ypr[0], ypr[1], ypr[2]};
+      float yprArray[3] = {yprCal[0], yprCal[1], yprCal[2]};
 
       // uint32_t cmd = buildManipulatorCommand(yprArray);
       // pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
 
-      auto packet = buildAnglesPacket(ypr);
+      auto packet = buildAnglesPacket(yprCal);
       pCharacteristic->setValue(packet.data(), packet.size());
 
       pCharacteristic->notify();
