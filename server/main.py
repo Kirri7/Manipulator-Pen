@@ -155,13 +155,6 @@ class BLEGateway:
             # распаковываем 3 значения по 2 байта каждое
             unscaled_values = struct.unpack('<hhh', raw)
             
-            # В вашем C++ коде: pitch = packet.pitch, roll = packet.roll, yaw = packet.yaw
-            # Но порядок в структуре C++ может отличаться. 
-            # Исходя из memcpy(&packet, pData, 6), порядок такой же, как в структуре.
-            # Если в C++ порядок yaw, pitch, roll, то распаковка вернет их в этом порядке.
-            
-            # Судя по вашему C++ коду: 
-            # packet.yaw = val[0], packet.pitch = val[1], packet.roll = val[2]
             yaw_raw, pitch_raw, roll_raw = unscaled_values
             
             ANGLE_SCALE = 100.0
