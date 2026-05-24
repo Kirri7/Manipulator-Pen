@@ -224,7 +224,7 @@ def update():
     # Совпали?
     error = get_rotation_error(player_root, target_root)
     if error < THRESHOLD:
-        status.text = '✅ ИДЕАЛЬНО!'
+        status.text = 'СОВПАЛО!'
         status.color = color.gold
         # Чтобы не вызывалось 100 раз в секунду, можно добавить флаг
         if not hasattr(update, 'won'):
