@@ -2,6 +2,7 @@ import threading
 from ursina import *
 from ursina.lights import DirectionalLight
 import random
+from copy import deepcopy
 
 # TODO add controller support
 # TODO add BLE-device support
