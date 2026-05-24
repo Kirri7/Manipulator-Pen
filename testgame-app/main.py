@@ -6,8 +6,6 @@ from copy import deepcopy
 import math
 
 # TODO add controller support
-# TODO add BLE-device support
-# TODO add timer
 
 app = Ursina()
 window.color = color.dark_gray
