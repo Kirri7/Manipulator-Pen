@@ -169,7 +169,7 @@ void processMotorLogic() {
                 //planner_mtr2.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
             }
 
-            Serial.print("up/down, count:"); Serial.println(count);
+            Serial.print("up/down,    count:"); Serial.println(count);
         }
     }
 
@@ -222,6 +222,9 @@ void processMotorLogic() {
          count  = angleToIndex(currentTargetRoll);  // path2
          count2 = angleToIndex(currentTargetPitch);   // path1
 
+         Serial.print("up/down,    count:"); Serial.println(count);
+         Serial.print("left/right, count2: "); Serial.println(count2);
+         
          // Подаём цель. GyverPlanner примет её даже если мотор ещё едет,
          // перестроит S-кривую разгона/торможения с текущей скорости.
          planner_mtr2.setTarget(path2[count]);
