@@ -3,6 +3,7 @@ import inspect
 import logging
 import sys
 import threading
+import struct
 from typing import Any, Optional
 
 from bleak import BleakScanner, BleakClient
