@@ -4,6 +4,11 @@ import logging
 import sys
 import threading
 import struct
+try:
+    import pygame
+    PYGAME_AVAILABLE = True
+except ImportError:
+    PYGAME_AVAILABLE = False
 from typing import Any, Optional
 
 from bleak import BleakScanner, BleakClient
@@ -60,7 +65,37 @@ class BLEGateway:
 
         self._server: Optional[BlessServer] = None
         self._running = True
+        self._sound_initialized = False
+        if PYGAME_AVAILABLE:
+            try:
+                pygame.mixer.init()
+                self._sound_initialized = True
+                logger.info("Audio system initialized (pygame)")
+            except Exception as e:
+                logger.warning(f"Failed to init pygame mixer: {e}")
+                self._sound_initialized = False
+        else:
+            logger.warning("pygame not found, sound playback disabled")
+        self._play_sound('sounds/calibration.mp3')
+        self._play_sound('sounds/calibration.mp3')
+        self._play_sound('sounds/calibration.mp3')
+        self._play_sound('sounds/calibration.mp3')
 
+    def _play_sound(self, filepath):
+        if not self._sound_initialized:
+            return
+        
+        def play():
+            try:
+                logger.info(f"Playing sound: {filepath}")
+                pygame.mixer.music.load(filepath)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy():
+                    pygame.time.Clock().tick(10)
+            except Exception as e:
+                logger.error(f"Sound playback error: {e}")
+        thread = threading.Thread(target=play, daemon=True)
+        thread.start()
     # -------------------------------------------------------------------------
     # Bless Server — манипулятор подключается к этому устройству
     # -------------------------------------------------------------------------
@@ -193,6 +228,7 @@ class BLEGateway:
 
                 async with BleakClient(device, disconnected_callback=on_disconnect) as client:
                     logger.info("Подключено к пульту.")
+                    self._play_sound('sounds/calibration.mp3')
                     await client.start_notify(REMOTE_CHAR_UUID, self._on_remote_notification)
                     logger.info("Подписка на характеристику оформлена. Ожидаю данные...")
 
