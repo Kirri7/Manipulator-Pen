@@ -6,6 +6,12 @@ import threading
 import struct
 from typing import Any, Optional
 
+try:
+    from playsound3 import playsound
+    SOUND_AVAILABLE = True
+except ImportError:
+    SOUND_AVAILABLE = False
+
 from bleak import BleakScanner, BleakClient
 from bless import (
     BlessServer,
@@ -60,7 +66,37 @@ class BLEGateway:
 
         self._server: Optional[BlessServer] = None
         self._running = True
+        self._sound_lock = threading.Lock()
+        self._last_sound_time = 0
+        if not SOUND_AVAILABLE:
+            logger.warning("Библиотека playsound не найдена. Звук отключен. Выполните: pip install playsound==1.2.2")
+        else:
+            logger.info("Audio system ready (playsound)")
 
+
+    def _play_sound(self, filepath):
+        if not SOUND_AVAILABLE:
+            return
+        
+        import time
+        now = time.time()
+        
+        # Debounce: не проигрываем чаще 2 раз в секунду
+        if now - self._last_sound_time < 2.0:
+            logger.debug("Звук проигрывался слишком недавно, игнорируем")
+            return
+        
+        with self._sound_lock:
+            self._last_sound_time = now
+            
+            def play():
+                try:
+                    logger.info(f"Playing sound: {filepath}")
+                    playsound(filepath)
+                except Exception as e:
+                    logger.error(f"Sound playback error: {e}")
+            thread = threading.Thread(target=play, daemon=True)
+            thread.start()
     # -------------------------------------------------------------------------
     # Bless Server — манипулятор подключается к этому устройству
     # -------------------------------------------------------------------------
@@ -193,6 +229,7 @@ class BLEGateway:
 
                 async with BleakClient(device, disconnected_callback=on_disconnect) as client:
                     logger.info("Подключено к пульту.")
+                    self._play_sound('sounds/calibration.mp3')
                     await client.start_notify(REMOTE_CHAR_UUID, self._on_remote_notification)
                     logger.info("Подписка на характеристику оформлена. Ожидаю данные...")
 
