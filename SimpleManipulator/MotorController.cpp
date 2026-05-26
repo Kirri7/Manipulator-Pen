@@ -213,8 +213,8 @@ void processMotorLogic() {
         float currentTargetPitch, currentTargetRoll;
         
         noInterrupts();
-        currentTargetPitch = g_TargetAngles.pitch;
-        currentTargetRoll = g_TargetAngles.roll;
+        currentTargetPitch = g_TargetAngles.roll;
+        currentTargetRoll = g_TargetAngles.pitch;
         g_TargetAngles.newUpdate = false;
         interrupts();
         
