@@ -1,0 +1,357 @@
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <cstdint>
+#include <array>
+
+// I2Cdev and MPU6050 libraries
+#include "I2Cdev.h"
+#include "MPU6050_6Axis_MotionApps20.h"
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    #include "Wire.h"
+#endif
+
+// Service and Characteristic UUIDs
+#define SERVICE_UUID        "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
+#define CHARACTERISTIC_UUID "fc18c54c-2f23-4c05-84bd-338ca880b786"
+
+BLEServer *pServer;
+BLEService *pService;
+BLECharacteristic *pCharacteristic;
+
+// MPU6050 instance
+MPU6050 mpu;
+
+// MPU control/status vars
+bool dmpReady = false;
+uint8_t mpuIntStatus;
+uint8_t devStatus;
+uint16_t packetSize;
+uint16_t fifoCount;
+uint8_t fifoBuffer[64];
+
+// orientation/motion vars
+Quaternion q;
+Quaternion qCal;
+VectorInt16 aa;
+VectorFloat gravity;
+float ypr[3];  // yaw, pitch, roll
+
+#define INTERRUPT_PIN 4  // MPU INT pin connected to GPIO15 on ESP32
+
+volatile bool mpuInterrupt = false;
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Starting BLE Peripheral Device with MPU6050!");
+
+  // Initialize MPU6050
+  mpu_initialize();
+  delay(1000);
+  calibrateMPU();
+
+  // Initialize BLE Device with a name
+  BLEDevice::init("ESP32-MPU6050-BLE");
+
+  // Create BLE Server
+  pServer = BLEDevice::createServer();
+  Serial.println("Server created");
+
+  // Create Service
+  pService = pServer->createService(SERVICE_UUID);
+  Serial.println("Service created");
+
+  // Create Characteristic with READ and NOTIFY properties
+  // READ: allows laptop to read the value
+  // NOTIFY: allows device to push updates to laptop
+  pCharacteristic = pService->createCharacteristic(
+    CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
+  Serial.println("Characteristic created");
+
+  // Set initial value
+  pCharacteristic->setValue("Ready");
+
+  // Start the service
+  pService->start();
+  Serial.println("Service started");
+
+  // Configure advertising
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
+
+  // Start advertising to make device discoverable
+  BLEDevice::startAdvertising();
+  Serial.println("BLE Peripheral is now discoverable!");
+  Serial.println("Device Name: ESP32-MPU6050-BLE");
+}
+
+// MPU6050 interrupt handler
+void ICACHE_RAM_ATTR dmpDataReady() {
+    mpuInterrupt = true;
+}
+
+// MPU6050 initialization
+void mpu_initialize() {
+  // join I2C bus
+  Wire.begin();
+  Wire.setClock(400000); // 400kHz I2C clock
+
+  // initialize device
+  Serial.println(F("Initializing I2C devices..."));
+  mpu.initialize();
+  pinMode(INTERRUPT_PIN, INPUT);
+
+  // verify connection
+  Serial.println(F("Testing device connections..."));
+  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+
+  // load and configure the DMP
+  Serial.println(F("Initializing DMP..."));
+  devStatus = mpu.dmpInitialize();
+
+  // supply gyro offsets (you may need to calibrate these for your specific sensor)
+  mpu.setXGyroOffset(0);
+  mpu.setYGyroOffset(0);
+  mpu.setZGyroOffset(0);
+  mpu.setZAccelOffset(0);
+
+  // make sure it worked (returns 0 if so)
+  if (devStatus == 0) {
+    // turn on the DMP
+    Serial.println(F("Enabling DMP..."));
+    mpu.setDMPEnabled(true);
+
+    // enable Arduino interrupt detection
+    Serial.println(F("Enabling interrupt detection..."));
+    attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+    mpuIntStatus = mpu.getIntStatus();
+
+    // set our DMP Ready flag
+    Serial.println(F("DMP ready! Waiting for first interrupt..."));
+    dmpReady = true;
+
+    // get expected DMP packet size
+    packetSize = mpu.dmpGetFIFOPacketSize();
+  } else {
+    // ERROR!
+    Serial.print(F("DMP Initialization failed (code "));
+    Serial.print(devStatus);
+    Serial.println(F(")"));
+  }
+}
+
+#define CALIBRATION_SAMPLES 100
+#define CALIBRATION_DELAY_MS 100
+float yprOffset[3] = {0, 0, 0}; // yaw, pitch, roll offset
+bool calibrated = false;
+
+float normalizeAngle(float angle) {
+  while (angle > M_PI)  angle -= 2 * M_PI;
+  while (angle < -M_PI) angle += 2 * M_PI;
+  return angle;
+}
+
+void calibrateMPU() {
+  Serial.println("DMP stabilization (2 sec)...");
+  mpu.resetFIFO();
+  delay(2000); // даём время фильтру Madgwick в DMP стабилизироваться
+  Serial.println("Calibrating zero position. DO NOT MOVE...");
+  float sumW = 0, sumX = 0, sumY = 0, sumZ = 0;
+  int count = 0;
+  const int need = 100;
+  unsigned long start = millis();
+  mpu.resetFIFO(); // чистим перед стартом
+  while (count < need && millis() - start < 3000) {
+    if (mpuInterrupt || mpu.getFIFOCount() >= packetSize) {
+      mpuInterrupt = false;
+      // Если накопилось много пакетов — сбрасываем старые, читаем только свежий
+      while (mpu.getFIFOCount() >= packetSize * 2) {
+        mpu.getFIFOBytes(fifoBuffer, packetSize);
+      }
+      mpu.getFIFOBytes(fifoBuffer, packetSize);
+      mpu.dmpGetQuaternion(&q, fifoBuffer);
+      sumW += q.w; sumX += q.x; sumY += q.y; sumZ += q.z;
+      count++;
+      if (count % 20 == 0) Serial.print(".");
+    }
+    yield(); // не блокируем WiFi/BLE на ESP32
+  }
+  if (count > 0) {
+    // Усредняем и нормализуем
+    q.w = sumW / count; q.x = sumX / count; q.y = sumY / count; q.z = sumZ / count;
+    float norm = sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+    q.w /= norm; q.x /= norm; q.y /= norm; q.z /= norm;
+    // Сохраняем ОБРАТНЫЙ (сопряжённый) кватернион: qCal = q^{-1}
+    // Для единичного кватерниона: q^{-1} = (w, -x, -y, -z)
+    qCal.w =  q.w;
+    qCal.x = -q.x;
+    qCal.y = -q.y;
+    qCal.z = -q.z;
+    calibrated = true;
+    Serial.println("\nCalibration done. qCal stored.");
+  } else {
+    Serial.println("\nCalibration FAILED!");
+  }
+}
+
+#define YAW_THRESHOLD     45.0f   // yaw threshold
+#define PITCH_THRESHOLD   45.0f   // pitch threshold
+
+uint32_t buildManipulatorCommand(float* ypr) {
+    uint32_t command = 0;
+    float yawDegrees = ypr[0] * 180/M_PI;
+    float pitchDegrees = ypr[1] * 180/M_PI;
+    // Right
+    if (yawDegrees > YAW_THRESHOLD) command |= (1u << 0);
+    // Left
+    if (yawDegrees < -YAW_THRESHOLD) command |= (1u << 8);
+    // Up
+    if (pitchDegrees > PITCH_THRESHOLD) command |= (1u << 16);
+    // Down
+    if (pitchDegrees < -PITCH_THRESHOLD) command |= (1u << 24);
+    return command;
+}
+
+#define ANGLE_SCALE 100
+struct AnglesPacket {
+    int16_t yaw;
+    int16_t pitch;
+    int16_t roll;
+};
+static_assert(sizeof(AnglesPacket) == 6, "AnglesPacket must be 6 bytes");
+
+std::array<uint8_t, 6> buildAnglesPacket(float* ypr) {
+    AnglesPacket packet;
+    float yaw = ypr[0] * 180 / M_PI;
+    float pitch = ypr[1] * 180 / M_PI;
+    float roll = ypr[2] * 180 / M_PI;
+    // yaw = fmin(180.0f, fmax(-180.0f, yaw));
+    packet.yaw = static_cast<int16_t>(yaw * ANGLE_SCALE);
+    packet.pitch = static_cast<int16_t>(pitch * ANGLE_SCALE);
+    packet.roll = static_cast<int16_t>(roll * ANGLE_SCALE);
+
+    std::array<uint8_t, 6> buffer;
+    memcpy(buffer.data(), &packet, sizeof(packet));
+    return buffer;
+}
+
+// В loop() - вместо buildAnglesPacket(ypr) отправляем кватернион
+std::array<uint8_t, 16> buildQuaternionPacket(const Quaternion& q) {
+    // Отправляем w, x, y, z как 4 float (16 байт)
+    struct QuatPacket {
+        float w;
+        float x;
+        float y;
+        float z;
+    };
+    
+    QuatPacket packet;
+    packet.w = q.w;  // или q.w если без калибровки
+    packet.x = q.x;
+    packet.y = q.y;
+    packet.z = q.z;
+    
+    std::array<uint8_t, 16> buffer;
+    memcpy(buffer.data(), &packet, sizeof(packet));
+    return buffer;
+}
+
+void loop() {
+  // Read MPU6050 data if DMP is ready
+  if (dmpReady) {
+    // wait for MPU interrupt or extra packet(s) available
+    if (!mpuInterrupt && fifoCount < packetSize) {
+      delay(10);
+      return;
+    }
+
+    // reset interrupt flag and get INT_STATUS byte
+    mpuInterrupt = false;
+    mpuIntStatus = mpu.getIntStatus();
+
+    // get current FIFO count
+    fifoCount = mpu.getFIFOCount();
+
+    // check for overflow
+    if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+      mpu.resetFIFO();
+      Serial.println(F("FIFO overflow!"));
+    } else if (mpuIntStatus & 0x02) {
+      // wait for correct available data length
+      while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+
+      // read a packet from FIFO
+      mpu.getFIFOBytes(fifoBuffer, packetSize);
+
+      // track FIFO count
+      fifoCount -= packetSize;
+
+      // Get quaternion and calculate yaw/pitch/roll
+      mpu.dmpGetQuaternion(&q, fifoBuffer);
+      if (calibrated) {
+        // Вычисляем относительный кватернион: qRel = qCal * q_current
+        // qCal уже хранит обратный (conjugate) от калибровочного момента
+        Quaternion qRel;
+        qRel.w = qCal.w*q.w - qCal.x*q.x - qCal.y*q.y - qCal.z*q.z;
+        qRel.x = qCal.w*q.x + qCal.x*q.w + qCal.y*q.z - qCal.z*q.y;
+        qRel.y = qCal.w*q.y - qCal.x*q.z + qCal.y*q.w + qCal.z*q.x;
+        qRel.z = qCal.w*q.z + qCal.x*q.y - qCal.y*q.x + qCal.z*q.w;
+        // Из относительного кватерниона получаем углы
+        mpu.dmpGetGravity(&gravity, &qRel);
+        mpu.dmpGetYawPitchRoll(ypr, &qRel, &gravity);
+      } else {
+        // Без калибровки — абсолютные углы
+        mpu.dmpGetGravity(&gravity, &q);
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+      }
+
+      float yaw   = ypr[0] * 180.0f / M_PI;
+      float pitch = ypr[1] * 180.0f / M_PI;
+      float roll  = ypr[2] * 180.0f / M_PI;
+
+      // Create JSON string with real MPU6050 data
+      String sensorData = "{\"yaw\":" + String(yaw, 2) +
+                          ",\"pitch\":" + String(pitch, 2) +
+                          ",\"roll\":" + String(roll, 2) +
+                          ",\"quat_w\":" + String(q.w, 4) +
+                          ",\"quat_x\":" + String(q.x, 4) +
+                          ",\"quat_y\":" + String(q.y, 4) +
+                          ",\"quat_z\":" + String(q.z, 4) + "}";
+
+      // Update the characteristic value
+      // pCharacteristic->setValue(sensorData.c_str());
+      // Notify all connected clients about the new value
+      // pCharacteristic->notify();
+      // Send manipulator command as BLE characteristic (left,right,up,down bits)
+      float yprArray[3] = {ypr[0], ypr[1], ypr[2]};
+
+      // uint32_t cmd = buildManipulatorCommand(yprArray);
+      // pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
+
+      // auto packet = buildAnglesPacket(ypr);
+      // pCharacteristic->setValue(packet.data(), packet.size());
+
+      const Quaternion& quat = q;
+      auto packet = buildQuaternionPacket(quat);
+      pCharacteristic->setValue(packet.data(), packet.size());
+      pCharacteristic->notify();
+
+      Serial.print("Sending MPU data: ");
+      Serial.println(sensorData.c_str());
+      // Serial.println(cmd);
+    }
+  } else {
+    // If DMP is not ready, send error status
+    // TODO think about it
+    String errorData = "{\"error\":\"MPU6050 not ready\"}";
+    pCharacteristic->setValue(errorData.c_str());
+    pCharacteristic->notify();
+    delay(1000);
+  }
+}
