@@ -4,6 +4,7 @@ from ursina.lights import DirectionalLight
 import random
 from copy import deepcopy
 import math
+from ursina import Quat  # или from panda3d.core import Quat
 
 # TODO add controller support
 
@@ -16,7 +17,8 @@ ROT_SPEED   = 90          # скорость вращения (град/сек)
 THRESHOLD   = 10          # допуск совпадения (градусов)
 LEFT_POS    = (-1.5, 0, 0)
 RIGHT_POS   = ( 1.5, 0, 0)
-CURRENT_ANGLES = [0, 0, 0]  # [yaw, roll, pitch]
+# CURRENT_ANGLES = [0, 0, 0]  # [yaw, roll, pitch]
+CURRENT_QUAT = Quat(1, 0, 0, 0)  # Начальное состояние: без вращения (w=1, x=y=z=0)
 ANGLE_FILE = 'angles.log'
 KEYBOARD_ENABLED = True
 ANGLE_DEVICE_ENABLED = True
@@ -39,26 +41,37 @@ def angle_distance(a, b):
     """Минимальное расстояние между двумя углами"""
     return abs(norm_angle((a % 360) - (b % 360)))
 
+# В Ursina Python файле (read_angles_from_file) - уже исправлено на кватернионы
+# Формат файла должен быть: w, x, y, z
 def read_angles_from_file():
-    """
-    Читает последнюю строку из файла с углами.
-    Формат: yaw, roll, pitch
-    """
-    global CURRENT_ANGLES
+    global CURRENT_QUAT
     try:
         with open(ANGLE_FILE, 'r') as f:
             lines = f.readlines()
             if lines:
                 last_line = lines[-1].strip()
                 if last_line:
-                    parts = last_line.split(',')
-                    if len(parts) == 3:
-                        # Конвертируем в числа
-                        angles = [float(p.strip()) for p in parts]
-                        CURRENT_ANGLES = angles
-                        # print(f"New angles: {CURRENT_ANGLES}")
+                    parts = [p.strip() for p in last_line.split(',')]
+                    if len(parts) == 4:
+                        # Panda3D/Ursina порядок: w, x, y, z
+                        w, x, y, z = map(float, parts)
+                        # CURRENT_QUAT = Quat(w, x, y, z)
+                        # CURRENT_QUAT = Quat(w, x, z, y)
+                        # CURRENT_QUAT = Quat(w, y, x, z)
+                        # CURRENT_QUAT = Quat(w, y, z, x) # won
+                        # CURRENT_QUAT = Quat(w, z, x, y)
+                        # CURRENT_QUAT = Quat(z, y, x, w)
+                        # CURRENT_QUAT = Quat(x, w, z, y)
+                        # CURRENT_QUAT = Quat(x, w, y, z)
+
+                        # CURRENT_QUAT = Quat(w, y, z, -x)
+                        # CURRENT_QUAT = Quat(w, y, -z, -x)
+                        # CURRENT_QUAT = Quat(w, -y, -z, -x)
+                        # CURRENT_QUAT = Quat(-w, -y, -z, -x)
+                        CURRENT_QUAT = Quat(w, y, z, x)
+
     except Exception as e:
-        print(f"Error reading angles: {e}")
+        print(f"Error reading quaternion: {e}")
 
 def ble_reader_thread():
     """Поток для чтения углов из файла"""
@@ -233,10 +246,14 @@ def update():
             player_root.rotation_z -= spd
 
     if ANGLE_DEVICE_ENABLED:
-        print(f"pitch {CURRENT_ANGLES[0]}, yaw {CURRENT_ANGLES[2]}, roll {CURRENT_ANGLES[1]}")
-        player_root.rotation_x = CURRENT_ANGLES[0]  # pitch
-        player_root.rotation_y = CURRENT_ANGLES[2]  # yaw
-        player_root.rotation_z = CURRENT_ANGLES[1]  # roll
+        # print(f"pitch {CURRENT_ANGLES[0]}, yaw {CURRENT_ANGLES[2]}, roll {CURRENT_ANGLES[1]}")
+        # player_root.rotation_x = CURRENT_ANGLES[0]  # pitch
+        # player_root.rotation_y = CURRENT_ANGLES[2]  # yaw
+        # player_root.rotation_z = CURRENT_ANGLES[1]  # roll
+        player_root.quaternion = CURRENT_QUAT
+        player_root.rotation_z = -player_root.rotation_z
+        player_root.rotation_x = -player_root.rotation_x
+
 
     # --- Проверка совпадения ---
     dx = angle_distance(player_root.rotation_x, target_root.rotation_x)

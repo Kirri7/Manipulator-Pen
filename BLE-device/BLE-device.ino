@@ -241,6 +241,27 @@ std::array<uint8_t, 6> buildAnglesPacket(float* ypr) {
     return buffer;
 }
 
+// В loop() - вместо buildAnglesPacket(ypr) отправляем кватернион
+std::array<uint8_t, 16> buildQuaternionPacket(const Quaternion& q) {
+    // Отправляем w, x, y, z как 4 float (16 байт)
+    struct QuatPacket {
+        float w;
+        float x;
+        float y;
+        float z;
+    };
+    
+    QuatPacket packet;
+    packet.w = q.w;  // или q.w если без калибровки
+    packet.x = q.x;
+    packet.y = q.y;
+    packet.z = q.z;
+    
+    std::array<uint8_t, 16> buffer;
+    memcpy(buffer.data(), &packet, sizeof(packet));
+    return buffer;
+}
+
 void loop() {
   // Read MPU6050 data if DMP is ready
   if (dmpReady) {
@@ -313,9 +334,12 @@ void loop() {
       // uint32_t cmd = buildManipulatorCommand(yprArray);
       // pCharacteristic->setValue((uint8_t*)&cmd, sizeof(cmd));
 
-      auto packet = buildAnglesPacket(ypr);
-      pCharacteristic->setValue(packet.data(), packet.size());
+      // auto packet = buildAnglesPacket(ypr);
+      // pCharacteristic->setValue(packet.data(), packet.size());
 
+      const Quaternion& quat = q;
+      auto packet = buildQuaternionPacket(quat);
+      pCharacteristic->setValue(packet.data(), packet.size());
       pCharacteristic->notify();
 
       Serial.print("Sending MPU data: ");

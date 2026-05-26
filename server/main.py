@@ -165,44 +165,51 @@ class BLEGateway:
     # -------------------------------------------------------------------------
     # Bleak Client — это устройство подключается к ESP32 пульту
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _process(raw: bytearray) -> Optional[tuple[float, float, float, float]]:
+        """
+        Парсит 16 байт: 4 значения float (little-endian) для кватерниона (w, x, y, z).
+        Возвращает (w, x, y, z) или None.
+        """
+        if len(raw) != 16:
+            return None
+        try:
+            # '<' - little-endian, 'f' - float (4 bytes)
+            # распаковываем 4 значения по 4 байта каждое
+            w, x, y, z = struct.unpack('<ffff', raw)
+            
+            # Нормализуем кватернион
+            norm = math.sqrt(w*w + x*x + y*y + z*z)
+            if norm > 0:
+                w /= norm
+                x /= norm
+                y /= norm
+                z /= norm
+            
+            return (w, x, y, z)
+        except Exception as e:
+            logger.error("Ошибка обработки кватерниона: %s", e)
+            return None
+
     def _on_remote_notification(self, sender: int, data: bytearray):
         """Каждый раз, когда ESP32 шлёт уведомление — отрабатка здесь."""
         logger.info("Данные от пульта [%s]: %s (hex: %s)", sender, data, data.hex())
 
-        angles = self._process(data)
+        quat = self._process(data)
 
-        if angles:
-            pitch, roll, yaw = angles
-            angle_logger.info(f"{pitch:.2f}, {roll:.2f}, {yaw:.2f}")
+        if quat:
+            w, x, y, z = quat
+            # Для лога конвертируем кватернион в углы (yaw, pitch, roll)
+            # Используем формулу для конвертации кватерниона в Euler angles
 
-        # Передаём в серверную часть без блокировки bleak-колбека
-        asyncio.create_task(self._push_to_manipulator(data))
+            # Пишем в файл для Ursina программы в формате: w, x, y, z
+            angle_logger.info(f"{w:.4f}, {x:.4f}, {y:.4f}, {z:.4f}")
+            logger.info(f"Quat: {w:.4f}, {x:.4f}, {y:.4f}, {z:.4f}")
+        else:
+            logger.warning("Не удалось распарсить кватернион")
 
-    @staticmethod
-    def _process(raw: bytearray) -> Optional[tuple[float, float, float]]:
-        """
-        Парсит 6 байт: 3 значения uint16 (little-endian).
-        Возвращает (pitch, roll, yaw) или None.
-        """
-        if len(raw) != 6:
-            return None
-        try:
-            # '<' - little-endian, 'H' - unsigned short (2 bytes)
-            # распаковываем 3 значения по 2 байта каждое
-            unscaled_values = struct.unpack('<hhh', raw)
-            
-            yaw_raw, pitch_raw, roll_raw = unscaled_values
-            
-            ANGLE_SCALE = 100.0
-            
-            return (
-                pitch_raw / ANGLE_SCALE,
-                roll_raw / ANGLE_SCALE,
-                yaw_raw / ANGLE_SCALE
-            )
-        except Exception as e:
-            logger.error("Ошибка обработки углов: %s", e)
-            return None
+        # Передаём сырые данные в серверную часть (16 байт кватерниона)
+        asyncio.create_task(self._push_to_manipulator(bytearray(data)))
 
     async def _client_loop(self):
         """Бесконечный цикл: сканировать -> подключиться -> принимать -> переподключиться."""
