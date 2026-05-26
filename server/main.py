@@ -6,6 +6,7 @@ import sys
 import threading
 import struct
 from typing import Any, Optional
+import socket
 
 try:
     from playsound3 import playsound
@@ -73,6 +74,9 @@ class BLEGateway:
             logger.warning("Библиотека playsound не найдена. Звук отключен. Выполните: pip install playsound==1.2.2")
         else:
             logger.info("Audio system ready (playsound)")
+        
+        self._udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_target = ("127.0.0.1", 5005) 
 
 
     def _play_sound(self, filepath):
@@ -200,6 +204,11 @@ class BLEGateway:
 
         if quat:
             w, x, y, z = quat
+            message = f"{w},{x},{y},{z}".encode()
+            try:
+                self._udp_socket.sendto(message, self.udp_target)
+            except Exception as e:
+                logger.error(f"UDP Send error: {e}")
             # Для лога конвертируем кватернион в углы (yaw, pitch, roll)
             # Используем формулу для конвертации кватерниона в Euler angles
 
