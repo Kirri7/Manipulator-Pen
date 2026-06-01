@@ -58,9 +58,26 @@ fh = logging.FileHandler("angles.log")
 # fh.setFormatter(logging.Formatter("%(asctime)s, %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
 angle_logger.addHandler(fh)
 
-# =============================================================================
-# Основной класс
-# =============================================================================
+
+def rotate_quaternion(axis, current_quat, angle_degrees):
+    theta = np.radians(angle_degrees)
+
+    s = np.sin(theta / 2.0)
+    c = np.cos(theta / 2.0)
+    
+    if axis == 'roll':  delta_q = np.array([c, s, 0, 0])
+    elif axis == 'pitch': delta_q = np.array([c, 0, s, 0])
+    elif axis == 'yaw':   delta_q = np.array([c, 0, 0, s])
+    else: return current_quat
+
+    # delta * current -> поворот в ГЛОБАЛЬНОЙ системе
+    # current * delta -> поворот в ЛОКАЛЬНОЙ системе
+    new_quat = np.quaternion_multiply(current_quat, delta_q)
+    
+    new_quat = new_quat / np.linalg.norm(new_quat)
+    
+    return new_quat
+
 
 class BLEGateway:
     def __init__(self):
