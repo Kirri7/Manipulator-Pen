@@ -200,7 +200,8 @@ class BLEGateway:
 
     def _on_remote_notification(self, sender: int, data: bytearray):
         """Каждый раз, когда ESP32 шлёт уведомление — отрабатка здесь."""
-        logger.info("Данные от пульта [%s]: %s (hex: %s)", sender, data, data.hex())
+        if (LOG_ANGLES_TERMINAL):
+            logger.info("Данные от пульта [%s]: %s (hex: %s)", sender, data, data.hex())
 
         quat = self._process(data)
 
