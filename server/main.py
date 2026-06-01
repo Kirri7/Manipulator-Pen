@@ -120,12 +120,20 @@ class BLEGateway:
         logger.debug("Server WRITE %s <- %s", characteristic.uuid, value)
         characteristic.value = value
 
+    def _on_manipulator_connected(self, client):
+        """Вызывается вручную при подключении клиента к GATT серверу."""
+        # Атрибут client может называться по-разному в разных версиях bless, 
+        # обычно это address или uuid устройства.
+        addr = client.address if hasattr(client, 'address') else str(client)
+        logger.info(f"Манипулятор подключился: {addr}")
+
     async def _start_server(self):
         logger.info("Запускаем локальный GATT сервер для манипулятора...")
         self._server = BlessServer(name=LOCAL_NAME)
         self._server.read_request_func = self._read_request
         self._server.write_request_func = self._write_request
 
+        # self._server.is_connected # TODO notify about manipulator connection
         await self._server.add_new_service(LOCAL_SERVICE_UUID)
 
         flags = (
@@ -251,7 +259,7 @@ class BLEGateway:
                     logger.info("Подключено к пульту.")
                     self._play_sound('sounds/calibration.mp3')
                     await client.start_notify(REMOTE_CHAR_UUID, self._on_remote_notification)
-                    logger.info("Подписка на характеристику оформлена. Ожидаю данные...")
+                    logger.info("Подписка на характеристику оформлена. Ожидаю данные...") # TODO ????
 
                     # Спим, пока соединение живо
                     await disconnected_event.wait()
