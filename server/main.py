@@ -7,6 +7,7 @@ import threading
 import struct
 from typing import Any, Optional
 import socket
+import numpy as np
 
 try:
     from playsound3 import playsound
