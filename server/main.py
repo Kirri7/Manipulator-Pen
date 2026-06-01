@@ -29,6 +29,8 @@ from bless import (
 # Конфигурация
 # =============================================================================
 
+LOG_ANGLES_TERMINAL = False
+
 # --- Устройство-источник (ESP32 пульт) ---
 TARGET_NAME = "ESP32-MPU6050-BLE"
 REMOTE_SERVICE_UUID = "acc0a4a9-f284-4eac-8fa5-d825c55ce64c"
@@ -212,9 +214,9 @@ class BLEGateway:
             # Для лога конвертируем кватернион в углы (yaw, pitch, roll)
             # Используем формулу для конвертации кватерниона в Euler angles
 
-            # Пишем в файл для Ursina программы в формате: w, x, y, z
-            angle_logger.info(f"{w:.4f}, {x:.4f}, {y:.4f}, {z:.4f}")
-            logger.info(f"Quat: {w:.4f}, {x:.4f}, {y:.4f}, {z:.4f}")
+            if (LOG_ANGLES_TERMINAL):
+                angle_logger.info(f"{w:.4f}, {x:.4f}, {y:.4f}, {z:.4f}")
+                logger.info(f"Quat: {w:.4f}, {x:.4f}, {y:.4f}, {z:.4f}")
         else:
             logger.warning("Не удалось распарсить кватернион")
 
