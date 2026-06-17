@@ -23,6 +23,7 @@ bool PacketParser::parseCommand(const uint8_t* pData, size_t length)  {
     return true;
 }
 
+/*
 bool PacketParser::parseAngles(const uint8_t* pData, size_t length) {
     if (length != 6) return false;
     AnglesPacket packet;
@@ -47,5 +48,69 @@ bool PacketParser::parseAngles(const uint8_t* pData, size_t length) {
     // Serial.print(", ");
     // Serial.println(g_TargetAngles.roll);
     
+    return true;
+}
+*/
+
+#include <cmath>
+
+// Структура для удобного хранения результата
+struct EulerAngles {
+    float yaw;
+    float pitch;
+    float roll;
+};
+
+EulerAngles quaternionToEuler(float w, float x, float y, float z) {
+    EulerAngles angles;
+
+    // Roll (x-axis rotation)
+    float sinr_cosp = 2 * (w * x + y * z);
+    float cosr_cosp = 1 - 2 * (x * x + y * y);
+    angles.roll = std::atan2(sinr_cosp, cosr_cosp);
+
+    // Pitch (y-axis rotation)
+    float sinp = 2 * (w * y - z * x);
+    if (std::abs(sinp) >= 1)
+        angles.pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
+    else
+        angles.pitch = std::asin(sinp);
+
+    // Yaw (z-axis rotation)
+    float siny_cosp = 2 * (w * z + x * y);
+    float cosy_cosp = 1 - 2 * (y * y + z * z);
+    angles.yaw = std::atan2(siny_cosp, cosy_cosp);
+
+    // Конвертируем радианы в градусы (если ваша система работает в градусах)
+    angles.roll = angles.roll * 180.0 / M_PI;
+    angles.pitch = angles.pitch * 180.0 / M_PI;
+    angles.yaw = angles.yaw * 180.0 / M_PI;
+
+    return angles;
+}
+
+bool PacketParser::parseAngles(const uint8_t* pData, size_t length) {
+    // Теперь ожидаем 16 байт (4 float по 4 байта каждый)
+    if (length != 16) return false;
+
+    // Структура для распаковки данных
+    struct QuatPacket {
+        float w, x, y, z;
+    } pkt;
+
+    // Копируем данные из буфера в структуру
+    memcpy(&pkt, pData, sizeof(pkt));
+
+    // Конвертируем кватернион в углы
+    EulerAngles angles = quaternionToEuler(pkt.w, pkt.x, pkt.y, pkt.z);
+
+    noInterrupts();
+    // Обновляем глобальные переменные
+    // g_TargetAngles.yaw = angles.yaw;
+    g_TargetAngles.pitch = angles.pitch;
+    g_TargetAngles.roll = angles.roll;
+    g_TargetAngles.newUpdate = true;
+    interrupts();
+
     return true;
 }

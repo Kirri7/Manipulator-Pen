@@ -8,6 +8,7 @@ BLEUUID BLEManager::remoteSUUID(REMOTE_SERVICE_UUID);
 BLEUUID BLEManager::remoteCUUID(REMOTE_CHARACTERISTIC_UUID);
 BLEUUID BLEManager::computerSUUID(COMPUTER_SERVICE_UUID);
 BLEUUID BLEManager::computerCUUID(COMPUTER_CHARACTERISTIC_UUID);
+BLEUUID BLEManager::feedbackCUUID(WARNING_CHAR_UUID);
 BLEManager* BLEManager::MyClientCallback::selfPtr = nullptr;
 BLEManager* BLEManager::MyAdvertisedDeviceCallbacks::selfPtr = nullptr;
 
@@ -60,6 +61,11 @@ bool BLEManager::connectToServer() {
   if(pClient->connect(myDevice)) {
     BLERemoteService* pRemoteService = pClient->getService(*currentServiceUUID);
     if (pRemoteService) {
+      BLERemoteCharacteristic* pWarn = pRemoteService->getCharacteristic(feedbackCUUID);
+      if (pWarn && pWarn->canWrite()) {
+          pFeedbackChar = pWarn;
+          Serial.println("Warning characteristic found!");
+      }
       pRemoteCharacteristic = pRemoteService->getCharacteristic(*currentCharUUID);
       // if(pRemoteCharacteristic->canRead())
       if (pRemoteCharacteristic && pRemoteCharacteristic->canNotify()) {
@@ -70,6 +76,16 @@ bool BLEManager::connectToServer() {
     }
   }
   return false;
+}
+
+void BLEManager::sendWarning() {
+    if (pFeedbackChar != nullptr && connected) {
+        const char* msg = "warning!";
+        pFeedbackChar->writeValue(msg, strlen(msg));
+        Serial.println("Sent: warning!");
+    } else {
+        Serial.println("Failed to send warning: Char not found or not connected");
+    }
 }
 
 void BLEManager::notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
