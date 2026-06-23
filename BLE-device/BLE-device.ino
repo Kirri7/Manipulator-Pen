@@ -137,9 +137,15 @@ public:
         mpuInterrupt = false;
         uint8_t mpuIntStatus = mpu.getIntStatus();
 
+        if (fifoCount > packetSize * 2) {
+            mpu.resetFIFO();
+            return false; 
+        }
         if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
           mpu.resetFIFO();
-          Serial.println(F("FIFO overflow!"));
+          // TODO think about it
+          // Serial.println(F("FIFO overflow!"));
+          return false;
         }
         if (!(mpuIntStatus & 0x02)) return false;
 
