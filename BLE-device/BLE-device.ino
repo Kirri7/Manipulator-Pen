@@ -128,22 +128,27 @@ public:
     bool collect(SensorData& outData) {
         if (!dmpReady) return false;
         uint16_t fifoCount = mpu.getFIFOCount();
-    
-        if (fifoCount >= 1024 || (mpu.getIntStatus() & 0x10)) {
-            mpu.resetFIFO();
-            Serial.println(F("FIFO overflow!"));
-            return false;
+
+        if (!mpuInterrupt && fifoCount < packetSize) {
+          delay(10);
+          return false;
         }
-    
-        if (fifoCount < packetSize) {
-            return false;
+
+        mpuInterrupt = false;
+        uint8_t mpuIntStatus = mpu.getIntStatus();
+
+        if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+          mpu.resetFIFO();
+          Serial.println(F("FIFO overflow!"));
         }
-    
-        while (fifoCount >= packetSize) {
-            mpu.getFIFOBytes(fifoBuffer, packetSize);
-            fifoCount -= packetSize;
-        }
-    
+        if (!(mpuIntStatus & 0x02)) return false;
+
+        while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+
+        mpu.getFIFOBytes(fifoBuffer, packetSize);
+
+        fifoCount -= packetSize;
+
         mpu.dmpGetQuaternion(&outData.q, fifoBuffer);
         // mpu.dmpGetYawPitchRoll
         outData.isValid = true;
