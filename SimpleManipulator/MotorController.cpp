@@ -207,13 +207,25 @@ void processMotorLogic() {
             planner_mtr1.setTarget(path1[count2]);
             
             if (btn2 || g_Input.left) {
-                if (count2 < pointAm - 1) count2 += gstep;
+                if (count2 < pointAm - 1) {
+                    count2 += gstep;
+                    warningSent = false;
+                } else if (!warningSent) {
+                    bleManager.sendWarning();
+                    warningSent = true;
+                }
                 // else count2 = pointAm;
             }
 
             //?возвращает обратно
             if (btn1 || g_Input.right) {
-                if (count2 > 4) count2 -= gstep;
+                if (count2 > 4) {
+                    count2 -= gstep;
+                    warningSent = false;
+                } else if (!warningSent) {
+                    bleManager.sendWarning();
+                    warningSent = true;
+                }
                 // else count2 = 4;  //0
             }
             
@@ -234,6 +246,17 @@ void processMotorLogic() {
          //          pitch → ось 0 (MTR2, path2, up/down)
          count  = angleToIndex(currentTargetRoll);  // path2
          count2 = angleToIndex(currentTargetPitch);   // path1
+
+         bool warningNeeded = 
+                (count <= 1) || (count >= pointAm-2) ||
+                (count2 <= 1) || (count2 >= pointAm-2);
+         
+         if (warningNeeded && !warningSent) {
+            bleManager.sendWarning();
+            warningSent = true;
+         } else {
+            warningSent = false;
+         }
 
          Serial.print("up/down,    count:"); Serial.println(count);
          Serial.print("left/right, count2: "); Serial.println(count2);

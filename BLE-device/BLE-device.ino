@@ -375,7 +375,7 @@ void setup() {
     );
     globalFeedb->setValue("Ready");
 
-    // globalChar->setCallbacks(new MyCallbacks()); // ???
+    globalFeedb->setCallbacks(new MyCallbacks()); // ???
     pService->start();
     Serial.println("Service started");
 
