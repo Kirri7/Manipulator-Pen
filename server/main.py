@@ -59,9 +59,8 @@ class DataCollector:
             
             logger.info("Найдено устройство: %s @ %s", device.name, device.address)
             disconnected_event = asyncio.Event()
-            async def on_disconnect(client): 
+            def on_disconnect(client): 
                 logger.warning("Связь с пультом потеряна.")
-                disconnected_event.set()
 
             async with BleakClient(device, disconnected_callback=on_disconnect) as client:
                 logger.info("Подключено к пульту.")
