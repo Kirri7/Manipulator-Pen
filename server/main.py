@@ -91,6 +91,7 @@ class SensorFusion:
             norm = math.sqrt(w*w + x*x + y*y + z*z)
             if norm > 0:
                 w, x, y, z = w/norm, x/norm, y/norm, z/norm
+            logger.info(f"w:{w}, x:{x}, y:{y}, z:{z}")
             return (w, x, y, z)
         except Exception as e:
             logger.error(f"Fusion error: {e}")
