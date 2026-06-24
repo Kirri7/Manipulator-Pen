@@ -36,6 +36,7 @@ inline const char* PASSWORD = "xxx";
 #define REMOTE_CHARACTERISTIC_UUID "fc18c54c-2f23-4c05-84bd-338ca880b786"
 #define COMPUTER_SERVICE_UUID "6938e8b6-77d8-44e4-ab9d-d27918908cb8"
 #define COMPUTER_CHARACTERISTIC_UUID "e869108c-f2db-4772-a6ba-380a0761ef24"
+#define WARNING_CHAR_UUID     "58a003c5-9ac0-4e1e-a15b-cdca9fcafec1"
 #endif
 
 // --- PATH DATA ---

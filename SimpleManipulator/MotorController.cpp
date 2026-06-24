@@ -1,5 +1,6 @@
 #include "MotorController.h"
 #include "config.h"
+#include "BLEManager.h"
 #include <cmath>
 
 // Global Steppers and Planners
@@ -28,6 +29,9 @@ bool Z1State = 0;
 int count = 31;
 int count2 = 31;
 int gstep = 1;  // шаг перемещения по массиву точек
+
+extern BLEManager bleManager; // Ссылка на менеджер
+bool warningSent = false;
 
 void initMotors() {
     pinMode(Z_Pin, INPUT_PULLUP);
@@ -157,6 +161,10 @@ void processMotorLogic() {
             if (btn4 || g_Input.up) {
                 if (count < pointAm - 1) {
                     count += gstep;
+                    warningSent = false;
+                } else if (!warningSent) {
+                    bleManager.sendWarning();
+                    warningSent = true;
                 }
                 // else count = pointAm-1;
                 //planner_mtr2.setTarget(path[count+1]);  // загружаем новую точку (начнётся с 0)
@@ -165,6 +173,10 @@ void processMotorLogic() {
             if (btn3 || g_Input.down) {
                 if (count > 3) { // 0 слишком близко к опоре
                     count -= gstep;
+                    warningSent = false;
+                } else if (!warningSent) {
+                    bleManager.sendWarning();
+                    warningSent = true;
                 }
                 // else count = 3;
                 //planner_mtr2.setTarget(path[count]);  // загружаем новую точку (начнётся с 0)
@@ -195,13 +207,25 @@ void processMotorLogic() {
             planner_mtr1.setTarget(path1[count2]);
             
             if (btn2 || g_Input.left) {
-                if (count2 < pointAm - 1) count2 += gstep;
+                if (count2 < pointAm - 1) {
+                    count2 += gstep;
+                    warningSent = false;
+                } else if (!warningSent) {
+                    bleManager.sendWarning();
+                    warningSent = true;
+                }
                 // else count2 = pointAm;
             }
 
             //?возвращает обратно
             if (btn1 || g_Input.right) {
-                if (count2 > 4) count2 -= gstep;
+                if (count2 > 4) {
+                    count2 -= gstep;
+                    warningSent = false;
+                } else if (!warningSent) {
+                    bleManager.sendWarning();
+                    warningSent = true;
+                }
                 // else count2 = 4;  //0
             }
             
@@ -222,6 +246,17 @@ void processMotorLogic() {
          //          pitch → ось 0 (MTR2, path2, up/down)
          count  = angleToIndex(currentTargetRoll);  // path2
          count2 = angleToIndex(currentTargetPitch);   // path1
+
+         bool warningNeeded = 
+                (count <= 1) || (count >= pointAm-2) ||
+                (count2 <= 1) || (count2 >= pointAm-2);
+         
+         if (warningNeeded && !warningSent) {
+            bleManager.sendWarning();
+            warningSent = true;
+         } else {
+            warningSent = false;
+         }
 
          Serial.print("up/down,    count:"); Serial.println(count);
          Serial.print("left/right, count2: "); Serial.println(count2);

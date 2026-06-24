@@ -14,9 +14,13 @@ public:
   static BLEUUID remoteCUUID;
   static BLEUUID computerSUUID;
   static BLEUUID computerCUUID;
+  static BLEUUID feedbackCUUID;
+  void sendWarning(); 
+  void findWarningCharacteristic(BLERemoteService* pService);
 private:
   BLEClient* pClient;
   BLERemoteCharacteristic* pRemoteCharacteristic;
+  BLERemoteCharacteristic* pFeedbackChar;
   BLEAdvertisedDevice* myDevice;
   boolean doConnect = false;
   boolean connected = false;

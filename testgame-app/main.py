@@ -6,6 +6,11 @@ from copy import deepcopy
 import math
 from ursina import Quat  # или from panda3d.core import Quat
 
+import socket
+import threading
+UDP_IP = "127.0.0.1"
+UDP_PORT = 5005
+
 # TODO add controller support
 
 app = Ursina()
@@ -40,6 +45,30 @@ def norm_angle(a):
 def angle_distance(a, b):
     """Минимальное расстояние между двумя углами"""
     return abs(norm_angle((a % 360) - (b % 360)))
+
+def udp_listener_thread():
+    """Поток, который слушает входящие пакеты от сервера"""
+    global CURRENT_QUAT
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((UDP_IP, UDP_PORT))
+    sock.settimeout(1.0) # Чтобы поток не завис навсегда при выключении
+    
+    print(f"Listening for BLE data on {UDP_IP}:{UDP_PORT}...")
+    
+    while ANGLE_DEVICE_ENABLED:
+        try:
+            data, addr = sock.recvfrom(1024) # буфер 1024 байта
+            msg = data.decode().split(',')
+            if len(msg) == 4:
+                w, x, y, z = map(float, msg)
+                # Важно: обновляем глобальную переменную
+                # В Ursina/Panda3D порядок может быть разным, 
+                # используй тот, который у тебя работал:
+                CURRENT_QUAT = Quat(w, y, z, x) 
+        except socket.timeout:
+            continue
+        except Exception as e:
+            print(f"UDP Error: {e}")
 
 # В Ursina Python файле (read_angles_from_file) - уже исправлено на кватернионы
 # Формат файла должен быть: w, x, y, z
@@ -288,5 +317,6 @@ def input(key):
     if key == 'r':
         new_round()                        # полный новый раунд
 
-threading.Thread(target=ble_reader_thread, daemon=True).start()
+# threading.Thread(target=ble_reader_thread, daemon=True).start()
+threading.Thread(target=udp_listener_thread, daemon=True).start()
 app.run()
